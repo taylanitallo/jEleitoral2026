@@ -45,9 +45,14 @@ async function iniciar(): Promise<void> {
   aplicacao.setGlobalPrefix('api');
   aplicacao.enableShutdownHooks();
 
-  await aplicacao.listen(configuracao.PORTA_API);
+  // A Railway injeta `PORT` e roteia para ela; o `PORTA_API` do `.env` vale
+  // para o ambiente local. E o bind precisa ser em `0.0.0.0`: escutando em
+  // localhost o processo sobe normalmente e a borda do provedor responde 404,
+  // que é um sintoma difícil de ligar à causa.
+  const porta = Number(process.env['PORT'] ?? configuracao.PORTA_API);
+  await aplicacao.listen(porta, '0.0.0.0');
   new Logger('Inicializacao').log(
-    `jEleitoral API no ar em ${configuracao.AMBIENTE}, porta ${configuracao.PORTA_API}.`,
+    `jEleitoral API no ar em ${configuracao.AMBIENTE}, porta ${porta}.`,
   );
 }
 
