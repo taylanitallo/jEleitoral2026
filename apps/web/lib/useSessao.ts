@@ -10,6 +10,8 @@ export interface Sessao {
   campanhas: string[];
   permissoes: Record<string, string>;
   mfaVerificado: boolean;
+  /** Verdadeiro para o time do provedor, que vive fora da árvore de inquilinos. */
+  ehProvedor: boolean;
 }
 
 /**

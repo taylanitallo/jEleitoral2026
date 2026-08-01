@@ -1,6 +1,20 @@
 'use client';
 
-import { ClipboardList, LayoutDashboard, LogOut, Moon, Sun } from 'lucide-react';
+import {
+  Building2,
+  ClipboardList,
+  FileBarChart,
+  Image,
+  LayoutDashboard,
+  LogOut,
+  Map,
+  Moon,
+  Sun,
+  Target,
+  TrendingUp,
+  UserSquare2,
+  Wallet,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -11,15 +25,39 @@ interface Sessao {
   email: string;
   perfil: string;
   permissoes: Record<string, string>;
+  ehProvedor: boolean;
 }
 
 const ITENS = [
   { href: '/painel', rotulo: 'Painel', icone: LayoutDashboard, permissao: 'campo.ler' },
   {
     href: '/campo/entrevista',
-    rotulo: 'Nova entrevista',
+    rotulo: 'Entrevista',
     icone: ClipboardList,
     permissao: 'campo.gerenciar',
+  },
+  {
+    href: '/cadastros/campanhas',
+    rotulo: 'Campanhas',
+    icone: Building2,
+    permissao: 'campanhas.gerenciar',
+  },
+  {
+    href: '/cadastros/candidatos',
+    rotulo: 'Candidatos',
+    icone: UserSquare2,
+    permissao: 'candidatos.ler',
+  },
+  { href: '/cadastros/territorio', rotulo: 'Território', icone: Map, permissao: 'territorio.gerenciar' },
+  { href: '/cadastros/metas', rotulo: 'Metas', icone: Target, permissao: 'metas.ler' },
+  { href: '/projecao', rotulo: 'Projeção', icone: TrendingUp, permissao: 'projecao.ler' },
+  { href: '/cadastros/financeiro', rotulo: 'Financeiro', icone: Wallet, permissao: 'financeiro.ler' },
+  { href: '/cadastros/artes', rotulo: 'Artes', icone: Image, permissao: 'artes.ler' },
+  {
+    href: '/relatorios',
+    rotulo: 'Relatórios',
+    icone: FileBarChart,
+    permissao: 'relatorios.exportar',
   },
 ] as const;
 
@@ -53,6 +91,11 @@ export function Cabecalho(): JSX.Element | null {
 
   const itensVisiveis = ITENS.filter((item) => !sessao || Boolean(sessao.permissoes[item.permissao]));
 
+  // O backoffice não é um módulo do inquilino: não há permissão de tenant que o
+  // libere, e sim o perfil de provedor. Misturá-lo em ITENS faria o menu do
+  // cliente exibir um item que a API sempre recusaria.
+  const ehProvedor = sessao?.ehProvedor === true;
+
   return (
     <header
       data-imprimir="ocultar"
@@ -63,7 +106,7 @@ export function Cabecalho(): JSX.Element | null {
           jEleitoral
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex flex-wrap items-center gap-1">
           {itensVisiveis.map((item) => {
             const Icone = item.icone;
             const ativo = caminho.startsWith(item.href);
@@ -84,6 +127,22 @@ export function Cabecalho(): JSX.Element | null {
               </Link>
             );
           })}
+
+          {ehProvedor ? (
+            <Link
+              href="/backoffice"
+              aria-current={caminho.startsWith('/backoffice') ? 'page' : undefined}
+              className={cn(
+                'flex items-center gap-1.5 rounded-[var(--raio)] px-2.5 py-1.5 text-sm',
+                caminho.startsWith('/backoffice')
+                  ? 'bg-[hsl(var(--acento-sutil))] text-[hsl(var(--acento))]'
+                  : 'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))]',
+              )}
+            >
+              <Building2 className="size-4" aria-hidden="true" />
+              Backoffice
+            </Link>
+          ) : null}
         </nav>
 
         <div className="ml-auto flex items-center gap-2">

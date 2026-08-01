@@ -253,6 +253,7 @@ export class AutenticacaoController {
     campanhas: string[];
     permissoes: Record<string, string>;
     mfaVerificado: boolean;
+    ehProvedor: boolean;
   } {
     return {
       idUsuario: claims.sub,
@@ -261,6 +262,11 @@ export class AutenticacaoController {
       campanhas: claims.campanhas,
       permissoes: claims.permissoes,
       mfaVerificado: claims.mfaVerificado,
+      // Provedor é quem está **fora** da árvore de inquilinos — é a mesma regra
+      // que a API aplica para liberar o backoffice. Derivar do perfil daria
+      // errado: `ADMINISTRADOR` existe dentro de cada organização e não tem, nem
+      // deve ter, acesso ao painel do provedor.
+      ehProvedor: !claims.idOrganizacao,
     };
   }
 
