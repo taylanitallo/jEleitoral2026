@@ -13,7 +13,8 @@
     "test:rls": "vitest run testes/coberturaRls.spec.ts",
     "test:isolamento": "vitest run testes/isolamento.spec.ts",
     "verificar:integracoes": "tsx scripts/verificarIntegracoes.ts",
-    "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts"
+    "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts",
+    "usuario:senha": "node scripts/redefinirSenha.mjs"
   },
   "dependencies": {
     "@jeleitoral/tipos": "workspace:*",
