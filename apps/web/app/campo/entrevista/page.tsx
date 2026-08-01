@@ -2,6 +2,7 @@
 
 import { FormularioEntrevista } from '@/componentes/campo/FormularioEntrevista';
 import { IndicadorFilaOffline } from '@/componentes/IndicadorFilaOffline';
+import { useSessao } from '@/lib/useSessao';
 
 /**
  * Tela de entrevista em campo.
@@ -26,8 +27,10 @@ const TEXTO_CONSENTIMENTO =
   'publicamente.';
 
 export default function PaginaEntrevista(): JSX.Element {
+  const { idCampanha } = useSessao();
+
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6">
       <header>
         <h1 className="text-xl font-semibold text-[hsl(var(--texto))]">Nova entrevista</h1>
       </header>
@@ -35,7 +38,7 @@ export default function PaginaEntrevista(): JSX.Element {
       <IndicadorFilaOffline />
 
       <FormularioEntrevista
-        idCampanha="00000000-0000-4000-8000-000000000001"
+        idCampanha={idCampanha ?? ''}
         idDomicilio="00000000-0000-4000-8000-000000000002"
         enderecoResumido="Rua São José, 42 — Centro"
         cargos={CARGOS_DEMONSTRACAO}

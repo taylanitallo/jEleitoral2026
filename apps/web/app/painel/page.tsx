@@ -17,9 +17,7 @@ import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
 import { CartaoIndicador } from '@/componentes/dashboard/CartaoIndicador';
 import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
 import { useResumoPainel } from '@/lib/useResumoPainel';
-
-/** Campanha ativa. Virá do contexto de sessão quando o login existir. */
-const ID_CAMPANHA = '00000000-0000-4000-8000-000000000001';
+import { useSessao } from '@/lib/useSessao';
 
 /** Ordem fixa das faixas. Nunca reordenar por tamanho: a cor segue a entidade. */
 const ORDEM_CLASSIFICACAO: ClassificacaoEleitor[] = [
@@ -32,13 +30,30 @@ const ORDEM_CLASSIFICACAO: ClassificacaoEleitor[] = [
 
 function ConteudoPainel(): JSX.Element {
   const parametros = useSearchParams();
+  const { sessao, idCampanha, carregando: carregandoSessao } = useSessao();
 
   const filtro = useMemo(
-    () => ({ ...deParametrosUrl(new URLSearchParams(parametros.toString())), idCampanha: ID_CAMPANHA }),
-    [parametros],
+    () => ({
+      ...deParametrosUrl(new URLSearchParams(parametros.toString())),
+      idCampanha: idCampanha ?? '',
+    }),
+    [parametros, idCampanha],
   );
 
   const { resumo, carregando, erro, recarregar } = useResumoPainel(filtro);
+
+  if (carregandoSessao) {
+    return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
+  }
+
+  if (!idCampanha) {
+    return (
+      <EstadoVazio
+        titulo="Nenhuma campanha vinculada"
+        descricao={`O usuário ${sessao?.email ?? ''} não está vinculado a nenhuma campanha. Peça ao administrador da organização para incluí-lo.`}
+      />
+    );
+  }
 
   const totalClassificado =
     resumo?.porClassificacao.reduce((soma, item) => soma + item.total, 0) ?? 0;
@@ -57,7 +72,7 @@ function ConteudoPainel(): JSX.Element {
       <TarjaUsoInterno natureza="LEVANTAMENTO_INTERNO" />
 
       <BarraFiltros
-        idCampanha={ID_CAMPANHA}
+        idCampanha={idCampanha}
         opcoes={{
           idCargo: [{ valor: 'cargo-df', rotulo: 'Deputado Federal' }],
           uf: [{ valor: 'SP', rotulo: 'São Paulo' }],
@@ -170,7 +185,7 @@ function ConteudoPainel(): JSX.Element {
 
 export default function PaginaPainel(): JSX.Element {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
       {/* `useSearchParams` exige fronteira de Suspense na renderização estática. */}
       <Suspense fallback={<EstadoCarregando mensagem="Carregando painel…" />}>
         <ConteudoPainel />

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ProvedorTema, SCRIPT_TEMA_INICIAL } from '@jeleitoral/ui';
+import { Cabecalho } from '@/componentes/Cabecalho';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,7 +29,10 @@ export default function LayoutRaiz({ children }: { children: React.ReactNode }):
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
       <body className="min-h-dvh antialiased">
-        <ProvedorTema>{children}</ProvedorTema>
+        <ProvedorTema>
+          <Cabecalho />
+          {children}
+        </ProvedorTema>
       </body>
     </html>
   );
