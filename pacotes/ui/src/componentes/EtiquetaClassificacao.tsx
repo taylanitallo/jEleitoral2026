@@ -30,22 +30,26 @@ const APARENCIAS: Record<ClassificacaoEleitor, Aparencia> = {
   APOIADOR: {
     rotulo: 'Apoiador',
     icone: ThumbsUp,
-    classes: 'bg-[hsl(var(--apoiador-sutil))] text-[hsl(var(--apoiador))] border-[hsl(var(--apoiador)/0.3)]',
+    classes:
+      'bg-[hsl(var(--apoiador-sutil))] text-[hsl(var(--apoiador))] border-[hsl(var(--apoiador)/0.3)]',
   },
   PROVAVEL: {
     rotulo: 'Provável',
     icone: TrendingUp,
-    classes: 'bg-[hsl(var(--provavel-sutil))] text-[hsl(var(--provavel))] border-[hsl(var(--provavel)/0.3)]',
+    classes:
+      'bg-[hsl(var(--provavel-sutil))] text-[hsl(var(--provavel))] border-[hsl(var(--provavel)/0.3)]',
   },
   INDECISO: {
     rotulo: 'Indeciso',
     icone: CircleHelp,
-    classes: 'bg-[hsl(var(--indeciso-sutil))] text-[hsl(var(--indeciso))] border-[hsl(var(--indeciso)/0.3)]',
+    classes:
+      'bg-[hsl(var(--indeciso-sutil))] text-[hsl(var(--indeciso))] border-[hsl(var(--indeciso)/0.3)]',
   },
   OPOSICAO: {
     rotulo: 'Oposição',
     icone: ThumbsDown,
-    classes: 'bg-[hsl(var(--oposicao-sutil))] text-[hsl(var(--oposicao))] border-[hsl(var(--oposicao)/0.3)]',
+    classes:
+      'bg-[hsl(var(--oposicao-sutil))] text-[hsl(var(--oposicao))] border-[hsl(var(--oposicao)/0.3)]',
   },
   NAO_INFORMOU: {
     rotulo: 'Não informou',

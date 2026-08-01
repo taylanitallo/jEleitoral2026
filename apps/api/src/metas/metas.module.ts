@@ -205,9 +205,7 @@ class MetasController {
     @Claims() claims: ClaimsUsuario,
     @Query() consulta: unknown,
   ): Promise<MetaComAvaliacao[]> {
-    const parametros = z
-      .object({ idCampanha: Uuid, idCandidato: Uuid.optional() })
-      .parse(consulta);
+    const parametros = z.object({ idCampanha: Uuid, idCandidato: Uuid.optional() }).parse(consulta);
     return this.metas.listar(claims, parametros);
   }
 

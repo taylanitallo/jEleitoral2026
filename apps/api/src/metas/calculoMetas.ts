@@ -56,9 +56,7 @@ function diasEntre(inicio: Date, fim: Date): number {
 
 export function avaliarMeta(entrada: EntradaAvaliacaoMeta): AvaliacaoMeta {
   const valorAlvo =
-    entrada.tipo === 'PERCENTUAL'
-      ? (entrada.valor / 100) * entrada.eleitoradoBase
-      : entrada.valor;
+    entrada.tipo === 'PERCENTUAL' ? (entrada.valor / 100) * entrada.eleitoradoBase : entrada.valor;
 
   const percentualRealizado = valorAlvo > 0 ? entrada.realizado / valorAlvo : 0;
   const percentualProjetado = valorAlvo > 0 ? entrada.projetado / valorAlvo : 0;
@@ -71,8 +69,7 @@ export function avaliarMeta(entrada: EntradaAvaliacaoMeta): AvaliacaoMeta {
   const ritmoAtualPorDia = entrada.realizado / Math.max(1, diasDecorridos);
 
   const faltam = Math.max(0, valorAlvo - entrada.realizado);
-  const ritmoNecessarioPorDia =
-    diasRestantes === null ? null : faltam / Math.max(1, diasRestantes);
+  const ritmoNecessarioPorDia = diasRestantes === null ? null : faltam / Math.max(1, diasRestantes);
 
   const situacao = decidirSituacao({
     valorAlvo,

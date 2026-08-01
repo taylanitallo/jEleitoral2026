@@ -160,7 +160,9 @@ export function distanciaEmMetros(a: Coordenada, b: Coordenada): number {
   const deltaLon = emRadianos(b.longitude - a.longitude);
   const termo =
     Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(emRadianos(a.latitude)) * Math.cos(emRadianos(b.latitude)) * Math.sin(deltaLon / 2) ** 2;
+    Math.cos(emRadianos(a.latitude)) *
+      Math.cos(emRadianos(b.latitude)) *
+      Math.sin(deltaLon / 2) ** 2;
   return 2 * RAIO_TERRA_METROS * Math.asin(Math.min(1, Math.sqrt(termo)));
 }
 

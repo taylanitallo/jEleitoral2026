@@ -75,7 +75,10 @@ export class IaService {
       model: this.modelo,
       max_tokens: 16000,
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'high', format: { type: 'json_schema', schema: EsquemaJsonDiagnostico } },
+      output_config: {
+        effort: 'high',
+        format: { type: 'json_schema', schema: EsquemaJsonDiagnostico },
+      },
       system: [
         {
           type: 'text',
@@ -107,7 +110,10 @@ export class IaService {
       funcionalidade: 'diagnostico',
       uso: resposta.usage,
       duracaoMs: Date.now() - inicio,
-      resumoEntrada: { cobertura: entrada.coberturaAmostral, chaves: Object.keys(entrada.agregados) },
+      resumoEntrada: {
+        cobertura: entrada.coberturaAmostral,
+        chaves: Object.keys(entrada.agregados),
+      },
     });
 
     return {
@@ -176,7 +182,10 @@ export class IaService {
     const resposta = await cliente.messages.create({
       model: this.modelo,
       max_tokens: 4000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: EsquemaJsonConsulta } },
+      output_config: {
+        effort: 'low',
+        format: { type: 'json_schema', schema: EsquemaJsonConsulta },
+      },
       system:
         'Você traduz perguntas de coordenadores de campanha para uma lista fixa de consultas ' +
         'pré-definidas. Escolha a que melhor responde à pergunta e extraia os parâmetros. ' +

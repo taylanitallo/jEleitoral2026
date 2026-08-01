@@ -1,13 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BarraAcoes,
-  Botao,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoVazio,
-} from '@jeleitoral/ui';
+import { BarraAcoes, Botao, EstadoCarregando, EstadoErro, EstadoVazio } from '@jeleitoral/ui';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { Tabela } from '@/componentes/cadastro/Tabela';
 import { ErroDaApi, api } from '@/lib/api';
@@ -183,8 +177,8 @@ export default function PaginaCandidatos(): JSX.Element {
           </Campo>
 
           <label className="flex items-center gap-2 text-sm text-[hsl(var(--texto))] sm:col-span-2">
-            <input type="checkbox" name="proprio" className="size-4" />
-            É candidato próprio desta campanha
+            <input type="checkbox" name="proprio" className="size-4" />É candidato próprio desta
+            campanha
           </label>
 
           {erroSalvar ? (

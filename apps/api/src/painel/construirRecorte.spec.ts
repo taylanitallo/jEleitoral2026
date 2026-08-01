@@ -29,9 +29,7 @@ describe('construirRecorte', () => {
       { idCampanha: CAMPANHA, idSecao: SECAO, idEquipe: 'equipe-1' },
       COLUNAS,
     );
-    expect(recorte.predicado).toBe(
-      'e.id_campanha = $1 and e.id_secao = $2 and e.id_equipe = $3',
-    );
+    expect(recorte.predicado).toBe('e.id_campanha = $1 and e.id_secao = $2 and e.id_equipe = $3');
     expect(recorte.parametros).toHaveLength(3);
   });
 
@@ -50,10 +48,7 @@ describe('construirRecorte', () => {
 
   it('nunca interpola valor do usuário no texto SQL', () => {
     const tentativa = "'; drop table public.entrevistados; --";
-    const recorte = construirRecorte(
-      { idCampanha: CAMPANHA, idSecao: tentativa },
-      COLUNAS,
-    );
+    const recorte = construirRecorte({ idCampanha: CAMPANHA, idSecao: tentativa }, COLUNAS);
     expect(recorte.predicado).not.toContain('drop');
     expect(recorte.predicado).toContain('$2');
     expect(recorte.parametros[1]).toBe(tentativa);
@@ -73,7 +68,7 @@ describe('construirRecorte', () => {
       },
       COLUNAS,
     );
-    expect(recorte.predicado).toContain(">= $2");
+    expect(recorte.predicado).toContain('>= $2');
     // Quem escolhe "até 20/08" espera o dia 20 inteiro.
     expect(recorte.predicado).toContain("< $3::date + interval '1 day'");
   });

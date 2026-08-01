@@ -136,7 +136,9 @@ export class TerritorioService {
   ): Promise<void> {
     const tabela = entrada.entidade === 'bairro' ? 'bairros' : 'logradouros';
     await this.banco.executarComoUsuario(claims, async (conexao) => {
-      await conexao.query(`update public.${tabela} set validado = true where id = $1`, [entrada.id]);
+      await conexao.query(`update public.${tabela} set validado = true where id = $1`, [
+        entrada.id,
+      ]);
       await this.auditoria.registrarNaTransacao(conexao, claims, {
         acao: 'ALTERAR',
         entidade: tabela,
@@ -192,7 +194,10 @@ class TerritorioController {
    */
   @Get('municipios')
   @ExigePermissao('territorio.ler')
-  async municipios(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
+  async municipios(
+    @Claims() claims: ClaimsUsuario,
+    @Query() consulta: unknown,
+  ): Promise<unknown[]> {
     const parametros = z
       .object({
         uf: z.string().length(2).toUpperCase().optional(),
@@ -297,9 +302,7 @@ class TerritorioController {
   @Post('validar')
   @ExigePermissao('territorio.gerenciar')
   async validar(@Claims() claims: ClaimsUsuario, @Body() corpo: unknown): Promise<{ ok: true }> {
-    const entrada = z
-      .object({ id: Uuid, entidade: z.enum(['bairro', 'logradouro']) })
-      .parse(corpo);
+    const entrada = z.object({ id: Uuid, entidade: z.enum(['bairro', 'logradouro']) }).parse(corpo);
     await this.territorio.validar(claims, entrada);
     return { ok: true };
   }

@@ -51,10 +51,7 @@ const FORMATO_DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo',
 });
 
-export function montarCabecalho(
-  titulo: string,
-  contexto: ContextoExportacao,
-): CabecalhoRelatorio {
+export function montarCabecalho(titulo: string, contexto: ContextoExportacao): CabecalhoRelatorio {
   const momento = FORMATO_DATA_HORA.format(contexto.geradoEm);
 
   const linhasDeFiltro =

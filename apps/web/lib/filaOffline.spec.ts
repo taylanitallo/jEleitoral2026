@@ -153,7 +153,11 @@ describe('sincronizar', () => {
       }));
     });
 
-    await Promise.all([fila.sincronizar(enviar), fila.sincronizar(enviar), fila.sincronizar(enviar)]);
+    await Promise.all([
+      fila.sincronizar(enviar),
+      fila.sincronizar(enviar),
+      fila.sincronizar(enviar),
+    ]);
     expect(enviar).toHaveBeenCalledTimes(1);
   });
 });

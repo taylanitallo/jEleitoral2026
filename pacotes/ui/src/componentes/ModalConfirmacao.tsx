@@ -109,7 +109,10 @@ export function ModalConfirmacao({
 
               {exigeDigitacao ? (
                 <div className="mt-4">
-                  <label htmlFor={idCampo} className="block text-sm text-[hsl(var(--texto-secundario))]">
+                  <label
+                    htmlFor={idCampo}
+                    className="block text-sm text-[hsl(var(--texto-secundario))]"
+                  >
                     Para confirmar, digite{' '}
                     <code className="rounded bg-[hsl(var(--fundo-sutil))] px-1 py-0.5 font-mono text-[hsl(var(--texto))]">
                       {textoDeConfirmacao}

@@ -5,3 +5,8 @@ build
 pnpm-lock.yaml
 coverage
 infra/etl/dados
+
+# O Prettier nao tem parser de SQL sem plugin, e as migrations sao escritas a
+# mao com formatacao deliberada (blocos de comentario, alinhamento das policies).
+# Deixa-las fora e melhor do que instalar um plugin que reformataria tudo.
+*.sql

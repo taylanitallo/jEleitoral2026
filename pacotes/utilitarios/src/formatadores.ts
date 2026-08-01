@@ -22,7 +22,10 @@ export function formatarMoedaCompacta(valor: number | null | undefined): string 
 
 export function formatarNumero(valor: number | null | undefined, casas = 0): string {
   if (valor === null || valor === undefined || Number.isNaN(valor)) return '—';
-  return valor.toLocaleString(LOCALE, { minimumFractionDigits: casas, maximumFractionDigits: casas });
+  return valor.toLocaleString(LOCALE, {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  });
 }
 
 /** Recebe a fração (0.125) e devolve "12,5%". */

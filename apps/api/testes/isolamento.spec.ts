@@ -82,7 +82,9 @@ beforeAll(async () => {
   // papel do qual é membro. Sem esta concessão o `set role` falha com
   // "permission denied", e o teste inteiro deixa de exercitar a RLS.
   await cliente.query(`grant ${PAPEL_TESTE} to current_user`);
-  await cliente.query(`grant usage on schema public, autenticacao, catalogo, provedor to ${PAPEL_TESTE}`);
+  await cliente.query(
+    `grant usage on schema public, autenticacao, catalogo, provedor to ${PAPEL_TESTE}`,
+  );
   await cliente.query(
     `grant select, insert, update, delete on all tables in schema public to ${PAPEL_TESTE}`,
   );

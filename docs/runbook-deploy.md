@@ -4,11 +4,11 @@ Três provedores, três papéis, e uma regra que vale para os três: **nada é
 aplicado à mão em produção**. O que não estiver neste arquivo ou no CI não
 acontece.
 
-| Provedor | O que hospeda | CLI |
-|---|---|---|
+| Provedor     | O que hospeda                       | CLI        |
+| ------------ | ----------------------------------- | ---------- |
 | **Supabase** | PostgreSQL, Auth, Storage, Realtime | `supabase` |
-| **Railway** | API NestJS, Redis, workers de fila | `railway` |
-| **Vercel** | Web Next.js, com preview por PR | `vercel` |
+| **Railway**  | API NestJS, Redis, workers de fila  | `railway`  |
+| **Vercel**   | Web Next.js, com preview por PR     | `vercel`   |
 
 Estado verificado em 01/08/2026: os três CLIs instalados e autenticados
 (`vercel` 54.5.0 · `railway` 4.65.0 · `supabase` 2.109.0).
@@ -37,11 +37,11 @@ Um projeto Supabase por ambiente. Não use branches de banco para separar
 homologação de produção: intenção de voto é dado sensível e um `db reset` no
 branch errado é irreversível.
 
-| Ambiente | Projeto | Quem aplica |
-|---|---|---|
-| desenvolvimento | local ou projeto próprio | o desenvolvedor |
-| homologacao | `jeleitoral-homologacao` — ref `rravmsjqnzfxgeuahpot` (sa-east-1) | CI, no merge para `homologacao` |
-| producao | `jeleitoral-producao` — ref `nrabyzfvulolhhfccqex` (sa-east-1) | CI, no merge para `main` |
+| Ambiente        | Projeto                                                           | Quem aplica                     |
+| --------------- | ----------------------------------------------------------------- | ------------------------------- |
+| desenvolvimento | local ou projeto próprio                                          | o desenvolvedor                 |
+| homologacao     | `jeleitoral-homologacao` — ref `rravmsjqnzfxgeuahpot` (sa-east-1) | CI, no merge para `homologacao` |
+| producao        | `jeleitoral-producao` — ref `nrabyzfvulolhhfccqex` (sa-east-1)    | CI, no merge para `main`        |
 
 ### Configuração obrigatória depois do primeiro push
 

@@ -57,9 +57,7 @@ export default function PaginaMetas(): JSX.Element {
   const [erroSalvar, definirErroSalvar] = useState<string | null>(null);
 
   const { dados, carregando, erro, recarregar } = useListagem<Meta[]>(
-    idCampanha && idCandidato
-      ? `/metas?idCampanha=${idCampanha}&idCandidato=${idCandidato}`
-      : null,
+    idCampanha && idCandidato ? `/metas?idCampanha=${idCampanha}&idCandidato=${idCandidato}` : null,
   );
 
   useEffect(() => {
@@ -263,8 +261,7 @@ export default function PaginaMetas(): JSX.Element {
             {
               chave: 'nivel',
               rotulo: 'Nível',
-              render: (linha) =>
-                RotuloNivelTerritorial[linha.nivel as Nivel] ?? linha.nivel,
+              render: (linha) => RotuloNivelTerritorial[linha.nivel as Nivel] ?? linha.nivel,
             },
             { chave: 'referencia', rotulo: 'Território', render: (linha) => linha.idReferencia },
             {
@@ -298,11 +295,7 @@ export default function PaginaMetas(): JSX.Element {
                 linha.nivel === 'SECAO' ? (
                   <span className="text-xs text-[hsl(var(--texto-fraco))]">nível mínimo</span>
                 ) : (
-                  <Botao
-                    variante="sutil"
-                    tamanho="pequeno"
-                    onClick={() => void distribuir(linha)}
-                  >
+                  <Botao variante="sutil" tamanho="pequeno" onClick={() => void distribuir(linha)}>
                     Distribuir
                   </Botao>
                 ),

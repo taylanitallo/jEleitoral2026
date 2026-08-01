@@ -75,7 +75,13 @@ export class CampoController {
     @Claims() claims: ClaimsUsuario,
     @Query() consulta: unknown,
   ): Promise<
-    Array<{ id: string; nome: string; apelido: string | null; mesmoDomicilio: boolean; similaridade: number }>
+    Array<{
+      id: string;
+      nome: string;
+      apelido: string | null;
+      mesmoDomicilio: boolean;
+      similaridade: number;
+    }>
   > {
     const parametros = ConsultaDuplicidade.parse(consulta);
     return this.banco.executarComoUsuario(claims, async (conexao) => {

@@ -169,7 +169,10 @@ class CandidatosController {
 
   @Get()
   @ExigePermissao('candidatos.ler')
-  async listar(@Claims() claims: ClaimsUsuario, @Query('idCampanha') id: string): Promise<unknown[]> {
+  async listar(
+    @Claims() claims: ClaimsUsuario,
+    @Query('idCampanha') id: string,
+  ): Promise<unknown[]> {
     const idCampanha = Uuid.parse(id);
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query(

@@ -116,8 +116,7 @@ function erroPadrao(proporcao: number, amostra: number, populacao: number): numb
 export function projetar(insumos: InsumosProjecao): ResultadoProjecao {
   const { eleitoradoBase, amostraTamanho, declaracoesValidas, fracaoHistorica } = insumos;
 
-  const cobertura =
-    eleitoradoBase > 0 ? Math.min(1, amostraTamanho / eleitoradoBase) : 0;
+  const cobertura = eleitoradoBase > 0 ? Math.min(1, amostraTamanho / eleitoradoBase) : 0;
 
   const base = {
     coberturaAmostral: cobertura,
@@ -202,8 +201,11 @@ export function projetar(insumos: InsumosProjecao): ResultadoProjecao {
       // pleitos e é honesta quanto a não ser um cálculo estatístico.
       0.1 / PARAMETROS_PROJECAO.zNoventaECinco;
 
-  const margem = PARAMETROS_PROJECAO.zNoventaECinco * erro * pesoAmostra +
-    PARAMETROS_PROJECAO.zNoventaECinco * (0.1 / PARAMETROS_PROJECAO.zNoventaECinco) * (1 - pesoAmostra);
+  const margem =
+    PARAMETROS_PROJECAO.zNoventaECinco * erro * pesoAmostra +
+    PARAMETROS_PROJECAO.zNoventaECinco *
+      (0.1 / PARAMETROS_PROJECAO.zNoventaECinco) *
+      (1 - pesoAmostra);
 
   const votosProjetados = fracaoFinal * eleitoradoBase;
   const intervaloMin = Math.max(0, (fracaoFinal - margem) * eleitoradoBase);

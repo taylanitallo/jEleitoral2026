@@ -50,11 +50,7 @@ export class Criptografia {
       throw new Error('Formato de valor criptografado inválido.');
     }
     const [ivBase64, etiquetaBase64, dadosBase64] = partes as [string, string, string];
-    const decifrador = createDecipheriv(
-      ALGORITMO,
-      this.chave,
-      Buffer.from(ivBase64, 'base64'),
-    );
+    const decifrador = createDecipheriv(ALGORITMO, this.chave, Buffer.from(ivBase64, 'base64'));
     decifrador.setAuthTag(Buffer.from(etiquetaBase64, 'base64'));
     return Buffer.concat([
       decifrador.update(Buffer.from(dadosBase64, 'base64')),

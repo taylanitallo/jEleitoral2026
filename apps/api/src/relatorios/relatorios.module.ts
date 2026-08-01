@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Header,
-  Injectable,
-  Module,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Header, Injectable, Module, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import {
@@ -158,10 +149,10 @@ export class RelatoriosService {
         return { assincrono: true as const };
       }
 
-      const { rows: usuarios } = await conexao.query<{ nome: string; cpf_criptografado: string | null }>(
-        'select nome, cpf_criptografado from public.usuarios where id = $1',
-        [claims.sub],
-      );
+      const { rows: usuarios } = await conexao.query<{
+        nome: string;
+        cpf_criptografado: string | null;
+      }>('select nome, cpf_criptografado from public.usuarios where id = $1', [claims.sub]);
       const { rows: campanhas } = await conexao.query<{ nome: string }>(
         'select nome from public.campanhas where id = $1',
         [entrada.filtro.idCampanha],

@@ -113,7 +113,10 @@ export class AutenticacaoGuard implements CanActivate {
       if (!escopoConcedido) {
         throw new ForbiddenException('Seu perfil não tem permissão para esta operação.');
       }
-      if (exigencia.escopoMinimo && !this.escopoSuficiente(escopoConcedido, exigencia.escopoMinimo)) {
+      if (
+        exigencia.escopoMinimo &&
+        !this.escopoSuficiente(escopoConcedido, exigencia.escopoMinimo)
+      ) {
         throw new ForbiddenException(
           'Seu perfil tem alcance menor do que esta operação exige. Fale com o administrador da campanha.',
         );

@@ -27,9 +27,7 @@ async function principal(): Promise<void> {
   // Sem UF, uma passada só carrega o país. Com UFs, uma passada por sigla — o
   // conector aceita uma de cada vez.
   const passadas =
-    ufs.length > 0
-      ? ufs.map((uf) => ({ uf, forcarRecarga: true }))
-      : [{ forcarRecarga: true }];
+    ufs.length > 0 ? ufs.map((uf) => ({ uf, forcarRecarga: true })) : [{ forcarRecarga: true }];
   let houveFalha = false;
 
   for (const parametros of passadas) {

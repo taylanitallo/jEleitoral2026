@@ -196,7 +196,10 @@ class FinanceiroController {
 
   @Get('resumo')
   @ExigePermissao('financeiro.ler')
-  async resumo(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<ResumoFinanceiro> {
+  async resumo(
+    @Claims() claims: ClaimsUsuario,
+    @Query() consulta: unknown,
+  ): Promise<ResumoFinanceiro> {
     const parametros = z
       .object({
         idCampanha: Uuid,
@@ -212,18 +215,13 @@ class FinanceiroController {
     @Claims() claims: ClaimsUsuario,
     @Query() consulta: unknown,
   ): Promise<CustoPorTerritorio[]> {
-    const parametros = z
-      .object({ idCampanha: Uuid, idCandidato: Uuid.optional() })
-      .parse(consulta);
+    const parametros = z.object({ idCampanha: Uuid, idCandidato: Uuid.optional() }).parse(consulta);
     return this.financeiro.custoPorTerritorio(claims, parametros);
   }
 
   @Get('previsto-realizado')
   @ExigePermissao('financeiro.ler')
-  async orcamento(
-    @Claims() claims: ClaimsUsuario,
-    @Query() consulta: unknown,
-  ): Promise<unknown[]> {
+  async orcamento(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
     const parametros = z
       .object({ idCampanha: Uuid, mesReferencia: z.coerce.date().default(() => new Date()) })
       .parse(consulta);

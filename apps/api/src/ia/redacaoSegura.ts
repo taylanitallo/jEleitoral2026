@@ -15,7 +15,10 @@
  */
 
 export class DadoPessoalNaIaError extends Error {
-  constructor(readonly caminho: string, readonly motivo: string) {
+  constructor(
+    readonly caminho: string,
+    readonly motivo: string,
+  ) {
     super(`Bloqueado o envio de dado pessoal à IA em "${caminho}": ${motivo}`);
     this.name = 'DadoPessoalNaIaError';
   }

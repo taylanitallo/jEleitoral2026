@@ -170,7 +170,10 @@ export class ProvedorService {
     });
   }
 
-  async revogarAcessoSuporte(claims: ClaimsUsuario, idAcesso: string): Promise<{ revogado: boolean }> {
+  async revogarAcessoSuporte(
+    claims: ClaimsUsuario,
+    idAcesso: string,
+  ): Promise<{ revogado: boolean }> {
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const resultado = await conexao.query(
         `update public.acessos_suporte
@@ -212,7 +215,10 @@ class ProvedorController {
 
   /** Auditoria em nível de metadado: quem acessou o quê, sem o conteúdo. */
   @Get('auditoria')
-  async auditoria(@Claims() claims: ClaimsUsuario, @Query('idOrganizacao') id?: string): Promise<unknown[]> {
+  async auditoria(
+    @Claims() claims: ClaimsUsuario,
+    @Query('idOrganizacao') id?: string,
+  ): Promise<unknown[]> {
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query(
         `select * from provedor.auditoria_metadados

@@ -8,8 +8,5 @@ export type { AcaoBarra, PropriedadesBarraAcoes } from './componentes/BarraAcoes
 export { ModalConfirmacao, useConfirmacao } from './componentes/ModalConfirmacao';
 export type { PropriedadesModalConfirmacao } from './componentes/ModalConfirmacao';
 export { EstadoCarregando, EstadoErro, EstadoVazio } from './componentes/Estados';
-export {
-  EtiquetaClassificacao,
-  corDaClassificacao,
-} from './componentes/EtiquetaClassificacao';
+export { EtiquetaClassificacao, corDaClassificacao } from './componentes/EtiquetaClassificacao';
 export { TarjaUsoInterno, AvisoNaoSubstitui } from './componentes/TarjaUsoInterno';

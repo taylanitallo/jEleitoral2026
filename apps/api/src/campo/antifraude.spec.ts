@@ -64,10 +64,7 @@ describe('duração', () => {
 
 describe('geolocalização', () => {
   it('acusa ausência de GPS com gravidade leve', () => {
-    const alertas = avaliarEntrevista(
-      entrevista({ latitude: null, longitude: null }),
-      contexto(),
-    );
+    const alertas = avaliarEntrevista(entrevista({ latitude: null, longitude: null }), contexto());
     expect(alertas).toHaveLength(1);
     expect(alertas[0]?.tipo).toBe('SEM_GEOLOCALIZACAO');
     expect(alertas[0]?.gravidade).toBe(1);
@@ -135,8 +132,7 @@ describe('território designado', () => {
 });
 
 describe('volume por hora', () => {
-  const emMinutos = (minutos: number): Date =>
-    new Date(AGORA.getTime() - minutos * 60 * 1000);
+  const emMinutos = (minutos: number): Date => new Date(AGORA.getTime() - minutos * 60 * 1000);
 
   it('acusa mais de 20 entrevistas na mesma hora', () => {
     const anteriores = Array.from({ length: 20 }, (_, i) => emMinutos(i + 1));

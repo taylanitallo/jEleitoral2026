@@ -32,7 +32,10 @@ export function TarjaUsoInterno({
         className,
       )}
     >
-      <ShieldAlert className="mt-0.5 size-4 shrink-0 text-[hsl(var(--atencao))]" aria-hidden="true" />
+      <ShieldAlert
+        className="mt-0.5 size-4 shrink-0 text-[hsl(var(--atencao))]"
+        aria-hidden="true"
+      />
       <div className="text-sm">
         <p className="font-semibold uppercase tracking-wide text-[hsl(var(--atencao))]">
           Uso interno — vedada a divulgação pública
@@ -52,7 +55,11 @@ export function TarjaUsoInterno({
  * eleitoral nem prestação de contas oficial. Fica no rodapé das áreas
  * sensíveis (levantamentos e financeiro).
  */
-export function AvisoNaoSubstitui({ contexto }: { contexto: 'juridico' | 'financeiro' }): JSX.Element {
+export function AvisoNaoSubstitui({
+  contexto,
+}: {
+  contexto: 'juridico' | 'financeiro';
+}): JSX.Element {
   return (
     <p className="text-xs text-[hsl(var(--texto-fraco))]">
       {contexto === 'juridico'

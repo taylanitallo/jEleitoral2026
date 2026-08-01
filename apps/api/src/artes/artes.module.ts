@@ -44,7 +44,11 @@ const EntradaVersao = z.object({
   formato: z.string().max(20),
   largura: z.number().int().positive().optional(),
   altura: z.number().int().positive().optional(),
-  tamanhoBytes: z.number().int().positive().max(200 * 1024 * 1024),
+  tamanhoBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(200 * 1024 * 1024),
 });
 
 @Injectable()

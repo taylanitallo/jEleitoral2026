@@ -1,9 +1,5 @@
 import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
-import {
-  ClaimsUsuario,
-  FiltroGlobal,
-  type ClassificacaoEleitor,
-} from '@jeleitoral/tipos';
+import { ClaimsUsuario, FiltroGlobal, type ClassificacaoEleitor } from '@jeleitoral/tipos';
 import { ExigePermissao } from '../autenticacao/autenticacao.guard.js';
 import { Claims } from '../autenticacao/claimsUsuario.decorator.js';
 import { BancoService } from '../banco/banco.service.js';
@@ -128,7 +124,7 @@ export class PainelService {
     conexao: { query: (texto: string, valores: unknown[]) => Promise<{ rows: unknown[] }> },
     filtro: FiltroGlobal,
   ): Promise<number> {
-    const condicoes: string[] = ["el.ano_referencia = 2026"];
+    const condicoes: string[] = ['el.ano_referencia = 2026'];
     const parametros: unknown[] = [];
 
     if (filtro.idSecao) {

@@ -86,7 +86,9 @@ export function BarraAcoes({
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold text-[hsl(var(--texto))]">{titulo}</h1>
           {subtitulo ? (
-            <p className="mt-0.5 truncate text-sm text-[hsl(var(--texto-secundario))]">{subtitulo}</p>
+            <p className="mt-0.5 truncate text-sm text-[hsl(var(--texto-secundario))]">
+              {subtitulo}
+            </p>
           ) : null}
         </div>
       ) : (

@@ -2,7 +2,10 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ArtesModule } from './artes/artes.module.js';
-import { AutenticacaoController, AutenticacaoService } from './autenticacao/autenticacao.controller.js';
+import {
+  AutenticacaoController,
+  AutenticacaoService,
+} from './autenticacao/autenticacao.controller.js';
 import { AutenticacaoGuard } from './autenticacao/autenticacao.guard.js';
 import { AuditoriaService } from './auditoria/auditoria.service.js';
 import { BancoService } from './banco/banco.service.js';

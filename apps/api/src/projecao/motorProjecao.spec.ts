@@ -100,7 +100,11 @@ describe('projetar — amostra direta', () => {
       insumos({ amostraTamanho: 20, intencoesDoCandidato: intencoes(10), declaracoesValidas: 20 }),
     );
     const grande = projetar(
-      insumos({ amostraTamanho: 200, intencoesDoCandidato: intencoes(100), declaracoesValidas: 200 }),
+      insumos({
+        amostraTamanho: 200,
+        intencoesDoCandidato: intencoes(100),
+        declaracoesValidas: 200,
+      }),
     );
     const larguraPequena = pequena.intervaloMax - pequena.intervaloMin;
     const larguraGrande = grande.intervaloMax - grande.intervaloMin;
@@ -111,7 +115,9 @@ describe('projetar — amostra direta', () => {
 describe('ponderação por certeza e por domicílio', () => {
   it('projeta menos quando os eleitores estão inseguros', () => {
     const certos = projetar(insumos({ intencoesDoCandidato: intencoes(40, { grauCerteza: 5 }) }));
-    const inseguros = projetar(insumos({ intencoesDoCandidato: intencoes(40, { grauCerteza: 2 }) }));
+    const inseguros = projetar(
+      insumos({ intencoesDoCandidato: intencoes(40, { grauCerteza: 2 }) }),
+    );
     expect(inseguros.votosProjetados).toBeLessThan(certos.votosProjetados);
   });
 
@@ -184,7 +190,11 @@ describe('índice de confiança', () => {
       insumos({ amostraTamanho: 20, intencoesDoCandidato: intencoes(10), declaracoesValidas: 20 }),
     );
     const densa = projetar(
-      insumos({ amostraTamanho: 200, intencoesDoCandidato: intencoes(100), declaracoesValidas: 200 }),
+      insumos({
+        amostraTamanho: 200,
+        intencoesDoCandidato: intencoes(100),
+        declaracoesValidas: 200,
+      }),
     );
     expect(densa.indiceConfianca).toBeGreaterThan(rala.indiceConfianca);
   });

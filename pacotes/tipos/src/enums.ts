@@ -101,13 +101,7 @@ export const RotuloOrigemRegistroTerritorial: Record<OrigemRegistroTerritorial, 
   USUARIO: 'Cadastrado em campo',
 };
 
-export const TipoLocalidade = z.enum([
-  'POVOADO',
-  'ASSENTAMENTO',
-  'SITIO',
-  'COMUNIDADE',
-  'RURAL',
-]);
+export const TipoLocalidade = z.enum(['POVOADO', 'ASSENTAMENTO', 'SITIO', 'COMUNIDADE', 'RURAL']);
 export type TipoLocalidade = z.infer<typeof TipoLocalidade>;
 
 // --- Estrutura eleitoral ----------------------------------------------------
@@ -222,14 +216,7 @@ export type TipoMeta = z.infer<typeof TipoMeta>;
  * Níveis de agregação territorial. A ordem importa: o motor de projeção
  * agrega de baixo para cima e o filtro do dashboard desce de cima para baixo.
  */
-export const NivelTerritorial = z.enum([
-  'SECAO',
-  'LOCAL',
-  'BAIRRO',
-  'ZONA',
-  'MUNICIPIO',
-  'ESTADO',
-]);
+export const NivelTerritorial = z.enum(['SECAO', 'LOCAL', 'BAIRRO', 'ZONA', 'MUNICIPIO', 'ESTADO']);
 export type NivelTerritorial = z.infer<typeof NivelTerritorial>;
 
 export const RotuloNivelTerritorial: Record<NivelTerritorial, string> = {

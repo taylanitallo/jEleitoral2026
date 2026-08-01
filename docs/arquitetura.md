@@ -9,13 +9,13 @@ real da implementação — inclusive o que ainda não existe.
 
 ## 1. Decisões fechadas na Fase 0
 
-| # | Decisão | Escolha | Consequência aceita |
-|---|---|---|---|
-| 1 | Escopo × prazo | 14 fases na ordem original | O sistema **não** estará em campo no pleito de 04/10/2026 |
-| 2 | Candidatos 2026 | CKAN CSV primário, DivulgaCandContas complementar | Menos frescor durante a janela de registro, muito mais estabilidade |
-| 3 | Volume de ETL | Sob demanda por UF das campanhas ativas | Onboarding de nova UF exige uma carga incremental |
-| 4 | Inegociável no 1º entregável | Offline-first no formulário de campo | Custo maior na Fase 6, retrofit evitado |
-| 5 | Isolamento multi-tenant | RLS por `organizacoes` | Migrations rodam uma vez; consultas federais são naturais |
+| #   | Decisão                      | Escolha                                           | Consequência aceita                                                 |
+| --- | ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| 1   | Escopo × prazo               | 14 fases na ordem original                        | O sistema **não** estará em campo no pleito de 04/10/2026           |
+| 2   | Candidatos 2026              | CKAN CSV primário, DivulgaCandContas complementar | Menos frescor durante a janela de registro, muito mais estabilidade |
+| 3   | Volume de ETL                | Sob demanda por UF das campanhas ativas           | Onboarding de nova UF exige uma carga incremental                   |
+| 4   | Inegociável no 1º entregável | Offline-first no formulário de campo              | Custo maior na Fase 6, retrofit evitado                             |
+| 5   | Isolamento multi-tenant      | RLS por `organizacoes`                            | Migrations rodam uma vez; consultas federais são naturais           |
 
 ## 2. Isolamento multi-tenant
 
@@ -81,15 +81,15 @@ visível ao cliente.
 
 Verificado com requisições reais em 31/07/2026.
 
-| Fonte | Estado | Como se integra |
-|---|---|---|
-| IBGE Localidades | ✅ 200 | REST direto, tempo real |
-| IBGE bairros | ❌ **404 — não existe** | Bairro vem de CEP e do cadastro em campo |
-| BrasilAPI / ViaCEP | ✅ 200 | Preenchimento assistido + cache permanente |
-| TSE CKAN | ✅ 200 | `package_search` / `package_show` → CSV → ETL |
-| `candidatos-2026` | ✅ publicado 22/07/2026, 7 CSVs | Fonte primária de candidatos |
-| `eleitorado-2026` | ✅ publicado 21/07/2026, perfil por seção **por UF** | Denominador das projeções |
-| DivulgaCandContas | ⚠️ parcial | `/candidatura/listar/{ano}/{UF}/{cod}/{cargo}/candidatos` responde 200; `/eleicao/eleicoes-anos` retorna 404 e `/eleicao/eleicao-atual` retorna 400 |
+| Fonte              | Estado                                               | Como se integra                                                                                                                                     |
+| ------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IBGE Localidades   | ✅ 200                                               | REST direto, tempo real                                                                                                                             |
+| IBGE bairros       | ❌ **404 — não existe**                              | Bairro vem de CEP e do cadastro em campo                                                                                                            |
+| BrasilAPI / ViaCEP | ✅ 200                                               | Preenchimento assistido + cache permanente                                                                                                          |
+| TSE CKAN           | ✅ 200                                               | `package_search` / `package_show` → CSV → ETL                                                                                                       |
+| `candidatos-2026`  | ✅ publicado 22/07/2026, 7 CSVs                      | Fonte primária de candidatos                                                                                                                        |
+| `eleitorado-2026`  | ✅ publicado 21/07/2026, perfil por seção **por UF** | Denominador das projeções                                                                                                                           |
+| DivulgaCandContas  | ⚠️ parcial                                           | `/candidatura/listar/{ano}/{UF}/{cod}/{cargo}/candidatos` responde 200; `/eleicao/eleicoes-anos` retorna 404 e `/eleicao/eleicao-atual` retorna 400 |
 
 O frontend **nunca** chama TSE ou IBGE diretamente. Tudo passa pela camada de
 ingestão, que grava em `sincronizacoes` e serve a base já normalizada. É o que
@@ -124,33 +124,33 @@ Atualizado em 01/08/2026. **185 testes unitários passando** (39 utilitários +
 
 ### Verificado contra sistema real
 
-| O quê | Como |
-|---|---|
-| 13 migrations | Aplicadas em `jeleitoral-homologacao` e `jeleitoral-producao` (PostgreSQL 17) |
-| Cobertura de RLS | `test:rls` — 7/7 contra o banco de homologação |
-| Isolamento cruzado | `test:isolamento` — 14/14, sob papel **não-superusuário** |
-| Integrações externas | `verificar:integracoes` — 8/8, validando conteúdo e não só HTTP 200 |
-| Paleta de classificação | Validador de daltonismo/contraste — aprovada nos temas claro e escuro |
+| O quê                   | Como                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| 13 migrations           | Aplicadas em `jeleitoral-homologacao` e `jeleitoral-producao` (PostgreSQL 17) |
+| Cobertura de RLS        | `test:rls` — 7/7 contra o banco de homologação                                |
+| Isolamento cruzado      | `test:isolamento` — 14/14, sob papel **não-superusuário**                     |
+| Integrações externas    | `verificar:integracoes` — 8/8, validando conteúdo e não só HTTP 200           |
+| Paleta de classificação | Validador de daltonismo/contraste — aprovada nos temas claro e escuro         |
 
 ### Fases entregues
 
-| Fase | Situação |
-|---|---|
-| 1 — Monorepo, CI, design system | Completa |
-| 2 — Multi-tenant, RLS, escopo, auditoria | Completa |
-| 2b — Backoffice do provedor | API completa; telas não |
-| 3 — Território: IBGE, CEP, curadoria, dedup fuzzy | API completa; telas não |
-| 4 — Estrutura eleitoral do TSE | Conectores completos |
-| 5 — Candidatos e mesclagem | API completa; telas não |
-| 6 — Mapeamento de campo | Completa (API + formulário + fila offline) |
-| 7 — Projeção e metas | Completa |
-| 8 — Painel com filtro global | Painel base ligado à API; gráficos Recharts e Realtime não |
-| 9 — Relatórios PDF/Excel | Geração completa; fila assíncrona registra mas não processa |
-| 10 — Financeiro | API completa; telas não |
-| 11 — Artes gráficas + Storage assinado | API completa; telas não |
-| 12 — IA integrada | Completa |
-| 13 — Apuração ao vivo | Estrutura completa, **parser não confrontado com arquivo real** |
-| 14 — E2E e hardening | Specs escritas; **não executadas** (navegador não instalado) |
+| Fase                                              | Situação                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------- |
+| 1 — Monorepo, CI, design system                   | Completa                                                        |
+| 2 — Multi-tenant, RLS, escopo, auditoria          | Completa                                                        |
+| 2b — Backoffice do provedor                       | API completa; telas não                                         |
+| 3 — Território: IBGE, CEP, curadoria, dedup fuzzy | API completa; telas não                                         |
+| 4 — Estrutura eleitoral do TSE                    | Conectores completos                                            |
+| 5 — Candidatos e mesclagem                        | API completa; telas não                                         |
+| 6 — Mapeamento de campo                           | Completa (API + formulário + fila offline)                      |
+| 7 — Projeção e metas                              | Completa                                                        |
+| 8 — Painel com filtro global                      | Painel base ligado à API; gráficos Recharts e Realtime não      |
+| 9 — Relatórios PDF/Excel                          | Geração completa; fila assíncrona registra mas não processa     |
+| 10 — Financeiro                                   | API completa; telas não                                         |
+| 11 — Artes gráficas + Storage assinado            | API completa; telas não                                         |
+| 12 — IA integrada                                 | Completa                                                        |
+| 13 — Apuração ao vivo                             | Estrutura completa, **parser não confrontado com arquivo real** |
+| 14 — E2E e hardening                              | Specs escritas; **não executadas** (navegador não instalado)    |
 
 ## 6. Pendências conhecidas
 

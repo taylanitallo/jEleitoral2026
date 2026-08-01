@@ -69,7 +69,10 @@ export class BancoService implements OnModuleDestroy {
       ]);
       // Necessário para `public.hmac_indice`, que calcula o índice de busca
       // sobre identificadores criptografados.
-      await conexao.query('select set_config($1, $2, true)', ['app.segredo_hmac', this.segredoHmac]);
+      await conexao.query('select set_config($1, $2, true)', [
+        'app.segredo_hmac',
+        this.segredoHmac,
+      ]);
 
       const resultado = await trabalho(conexao);
       await conexao.query('commit');

@@ -48,10 +48,20 @@ const ITENS = [
     icone: UserSquare2,
     permissao: 'candidatos.ler',
   },
-  { href: '/cadastros/territorio', rotulo: 'Território', icone: Map, permissao: 'territorio.gerenciar' },
+  {
+    href: '/cadastros/territorio',
+    rotulo: 'Território',
+    icone: Map,
+    permissao: 'territorio.gerenciar',
+  },
   { href: '/cadastros/metas', rotulo: 'Metas', icone: Target, permissao: 'metas.ler' },
   { href: '/projecao', rotulo: 'Projeção', icone: TrendingUp, permissao: 'projecao.ler' },
-  { href: '/cadastros/financeiro', rotulo: 'Financeiro', icone: Wallet, permissao: 'financeiro.ler' },
+  {
+    href: '/cadastros/financeiro',
+    rotulo: 'Financeiro',
+    icone: Wallet,
+    permissao: 'financeiro.ler',
+  },
   { href: '/cadastros/artes', rotulo: 'Artes', icone: Image, permissao: 'artes.ler' },
   {
     href: '/relatorios',
@@ -89,7 +99,9 @@ export function Cabecalho(): JSX.Element | null {
     roteador.replace('/entrar');
   }
 
-  const itensVisiveis = ITENS.filter((item) => !sessao || Boolean(sessao.permissoes[item.permissao]));
+  const itensVisiveis = ITENS.filter(
+    (item) => !sessao || Boolean(sessao.permissoes[item.permissao]),
+  );
 
   // O backoffice não é um módulo do inquilino: não há permissão de tenant que o
   // libere, e sim o perfil de provedor. Misturá-lo em ITENS faria o menu do

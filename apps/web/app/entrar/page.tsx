@@ -64,9 +64,7 @@ function FormularioEntrada(): JSX.Element {
       await api.enviar('/autenticacao/mfa/verificar', { ...desafio, codigo });
       roteador.replace(destino);
     } catch (problema) {
-      definirErro(
-        problema instanceof ErroDaApi ? problema.corpo.mensagem : 'Código inválido.',
-      );
+      definirErro(problema instanceof ErroDaApi ? problema.corpo.mensagem : 'Código inválido.');
     } finally {
       definirEnviando(false);
     }
@@ -102,8 +100,8 @@ function FormularioEntrada(): JSX.Element {
           {inscricao ? (
             <div className="rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-3">
               <p className="text-sm text-[hsl(var(--texto-secundario))]">
-                Seu perfil exige verificação em duas etapas. Leia o código abaixo no seu
-                aplicativo autenticador e confirme com o número gerado.
+                Seu perfil exige verificação em duas etapas. Leia o código abaixo no seu aplicativo
+                autenticador e confirme com o número gerado.
               </p>
               <img
                 src={inscricao.qrCode}
@@ -120,13 +118,18 @@ function FormularioEntrada(): JSX.Element {
           ) : null}
 
           <div>
-            <label htmlFor="codigo" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
+            <label
+              htmlFor="codigo"
+              className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+            >
               Código do aplicativo autenticador
             </label>
             <input
               id="codigo"
               value={codigo}
-              onChange={(evento) => definirCodigo(evento.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(evento) =>
+                definirCodigo(evento.target.value.replace(/\D/g, '').slice(0, 6))
+              }
               inputMode="numeric"
               autoComplete="one-time-code"
               autoFocus
@@ -152,7 +155,10 @@ function FormularioEntrada(): JSX.Element {
       ) : (
         <form onSubmit={(evento) => void entrar(evento)} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
+            <label
+              htmlFor="email"
+              className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+            >
               E-mail
             </label>
             <input
@@ -167,7 +173,10 @@ function FormularioEntrada(): JSX.Element {
             />
           </div>
           <div>
-            <label htmlFor="senha" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
+            <label
+              htmlFor="senha"
+              className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+            >
               Senha
             </label>
             <input
@@ -191,8 +200,8 @@ function FormularioEntrada(): JSX.Element {
             Entrar
           </Botao>
           <p className="flex items-start gap-1.5 text-xs text-[hsl(var(--texto-fraco))]">
-            <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            O acesso é criado por convite do administrador da campanha. Não há autocadastro.
+            <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />O acesso é criado
+            por convite do administrador da campanha. Não há autocadastro.
           </p>
         </form>
       )}

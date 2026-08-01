@@ -16,13 +16,13 @@ investimento por território e distribuir material gráfico.
 
 ## Arquitetura em uma tela
 
-| Camada | Tecnologia |
-|---|---|
-| Backend | NestJS · Railway |
-| Banco | Supabase (PostgreSQL 17 + RLS + Auth + Storage) |
-| Frontend | Next.js 14 (App Router) · Vercel |
-| Filas | BullMQ + Redis |
-| IA | Anthropic API, sempre pelo backend |
+| Camada   | Tecnologia                                      |
+| -------- | ----------------------------------------------- |
+| Backend  | NestJS · Railway                                |
+| Banco    | Supabase (PostgreSQL 17 + RLS + Auth + Storage) |
+| Frontend | Next.js 14 (App Router) · Vercel                |
+| Filas    | BullMQ + Redis                                  |
+| IA       | Anthropic API, sempre pelo backend              |
 
 **Nomenclatura 100% em português** — código, tabelas, rotas, variáveis.
 

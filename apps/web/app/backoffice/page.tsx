@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  BarraAcoes,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoVazio,
-} from '@jeleitoral/ui';
+import { BarraAcoes, EstadoCarregando, EstadoErro, EstadoVazio } from '@jeleitoral/ui';
 import { RotuloStatusOrganizacao, type StatusOrganizacao } from '@jeleitoral/tipos';
 import { Tabela } from '@/componentes/cadastro/Tabela';
 import { useListagem } from '@/lib/useListagem';
@@ -56,9 +51,7 @@ export default function PaginaBackoffice(): JSX.Element {
     <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
       <BarraAcoes
         titulo="Backoffice do provedor"
-        subtitulo={
-          organizacoes.dados ? `${organizacoes.dados.length} organização(ões)` : undefined
-        }
+        subtitulo={organizacoes.dados ? `${organizacoes.dados.length} organização(ões)` : undefined}
         atualizar={{
           aoAcionar: () => {
             organizacoes.recarregar();
@@ -70,9 +63,9 @@ export default function PaginaBackoffice(): JSX.Element {
       />
 
       <p className="rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--fundo-sutil))] px-3 py-2 text-xs text-[hsl(var(--texto-secundario))]">
-        Esta área expõe apenas contadores de uso. Dados de campo das organizações não são
-        acessíveis daqui — o acesso de suporte exige autorização do administrador da organização,
-        com motivo e prazo de expiração.
+        Esta área expõe apenas contadores de uso. Dados de campo das organizações não são acessíveis
+        daqui — o acesso de suporte exige autorização do administrador da organização, com motivo e
+        prazo de expiração.
       </p>
 
       {organizacoes.erro ? (

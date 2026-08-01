@@ -169,7 +169,9 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
               idSecao,
               ano,
               totalEleitores,
-              JSON.stringify({ [String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO')]: totalEleitores }),
+              JSON.stringify({
+                [String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO')]: totalEleitores,
+              }),
               JSON.stringify({ [String(linha['DS_GENERO'] ?? 'NAO_INFORMADO')]: totalEleitores }),
               JSON.stringify({
                 [String(linha['DS_GRAU_ESCOLARIDADE'] ?? 'NAO_INFORMADO')]: totalEleitores,

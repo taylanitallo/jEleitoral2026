@@ -13,7 +13,8 @@ const variantesBotao = cva(
           'bg-[hsl(var(--acento))] text-[hsl(var(--acento-contraste))] hover:bg-[hsl(var(--acento)/0.9)]',
         secundario:
           'border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] text-[hsl(var(--texto))] hover:bg-[hsl(var(--fundo-sutil))]',
-        sutil: 'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))] hover:text-[hsl(var(--texto))]',
+        sutil:
+          'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))] hover:text-[hsl(var(--texto))]',
         perigo: 'bg-[hsl(var(--perigo))] text-white hover:bg-[hsl(var(--perigo)/0.9)]',
         contorno_perigo:
           'border border-[hsl(var(--perigo)/0.4)] text-[hsl(var(--perigo))] hover:bg-[hsl(var(--perigo-sutil))]',
@@ -30,8 +31,7 @@ const variantesBotao = cva(
 );
 
 export interface PropriedadesBotao
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof variantesBotao> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof variantesBotao> {
   carregando?: boolean;
 }
 

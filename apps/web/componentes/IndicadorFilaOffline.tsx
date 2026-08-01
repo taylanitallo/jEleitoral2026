@@ -23,16 +23,13 @@ export function IndicadorFilaOffline({ className }: { className?: string }): JSX
   const [online, definirOnline] = useState(true);
   const [sincronizando, definirSincronizando] = useState(false);
 
-  const enviarLote = useCallback(
-    async (idCampanha: string, entrevistas: EntradaEntrevista[]) => {
-      const resposta = await api.enviar<{ resultados: ResultadoItemSincronizacao[] }>(
-        '/campo/sincronizar',
-        { idCampanha, entrevistas },
-      );
-      return resposta.resultados;
-    },
-    [],
-  );
+  const enviarLote = useCallback(async (idCampanha: string, entrevistas: EntradaEntrevista[]) => {
+    const resposta = await api.enviar<{ resultados: ResultadoItemSincronizacao[] }>(
+      '/campo/sincronizar',
+      { idCampanha, entrevistas },
+    );
+    return resposta.resultados;
+  }, []);
 
   const sincronizar = useCallback(async () => {
     if (!navigator.onLine) {
@@ -106,8 +103,8 @@ export function IndicadorFilaOffline({ className }: { className?: string }): JSX
         ) : !online ? (
           <>
             Sem conexão. <strong>{resumo.pendentes}</strong>{' '}
-            {resumo.pendentes === 1 ? 'entrevista salva' : 'entrevistas salvas'} no aparelho —
-            sobem sozinhas quando o sinal voltar.
+            {resumo.pendentes === 1 ? 'entrevista salva' : 'entrevistas salvas'} no aparelho — sobem
+            sozinhas quando o sinal voltar.
           </>
         ) : (
           <>

@@ -2,12 +2,7 @@
 
 import { CheckCircle2, MapPin, ShieldCheck, TriangleAlert, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Botao,
-  EtiquetaClassificacao,
-  TarjaUsoInterno,
-  cn,
-} from '@jeleitoral/ui';
+import { Botao, EtiquetaClassificacao, TarjaUsoInterno, cn } from '@jeleitoral/ui';
 import {
   ClassificacaoEleitor,
   RotuloClassificacaoEleitor,
@@ -137,9 +132,7 @@ export function FormularioEntrevista({
           idVersaoConsentimento,
           canal: 'VERBAL_REGISTRADO',
           aceitoEm: agora,
-          ...(posicao
-            ? { latitude: posicao.latitude, longitude: posicao.longitude }
-            : {}),
+          ...(posicao ? { latitude: posicao.latitude, longitude: posicao.longitude } : {}),
         },
         natureza: 'LEVANTAMENTO_INTERNO',
         dataHora: agora,
@@ -266,7 +259,10 @@ export function FormularioEntrevista({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="apelido" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
+            <label
+              htmlFor="apelido"
+              className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+            >
               Como é conhecido <span className="text-[hsl(var(--texto-fraco))]">(opcional)</span>
             </label>
             <input
@@ -277,7 +273,10 @@ export function FormularioEntrevista({
             />
           </div>
           <div>
-            <label htmlFor="telefone" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
+            <label
+              htmlFor="telefone"
+              className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+            >
               Telefone <span className="text-[hsl(var(--texto-fraco))]">(opcional)</span>
             </label>
             <input
@@ -413,11 +412,7 @@ export function FormularioEntrevista({
               ? 'Localização negada. A entrevista pode ser salva mesmo assim.'
               : 'Sem localização. A entrevista pode ser salva mesmo assim.'}
         {estadoGps !== 'obtida' && estadoGps !== 'obtendo' ? (
-          <button
-            type="button"
-            onClick={solicitarGps}
-            className="underline underline-offset-2"
-          >
+          <button type="button" onClick={solicitarGps} className="underline underline-offset-2">
             tentar de novo
           </button>
         ) : null}

@@ -53,9 +53,7 @@ describe('garantirSemDadoPessoal — campos proibidos', () => {
 
 describe('garantirSemDadoPessoal — documento em texto livre', () => {
   it('recusa CPF escrito na observação, com ou sem máscara', () => {
-    expect(() => garantirSemDadoPessoal({ observacao: 'anotar 111.444.777-35' })).toThrow(
-      /CPF/i,
-    );
+    expect(() => garantirSemDadoPessoal({ observacao: 'anotar 111.444.777-35' })).toThrow(/CPF/i);
     expect(() => garantirSemDadoPessoal({ observacao: 'anotar 11144477735' })).toThrow(/CPF/i);
   });
 
@@ -67,9 +65,7 @@ describe('garantirSemDadoPessoal — documento em texto livre', () => {
 
   it('recusa telefone e e-mail', () => {
     expect(() => garantirSemDadoPessoal({ nota: 'ligar (11) 91234-5678' })).toThrow(/telefone/i);
-    expect(() => garantirSemDadoPessoal({ nota: 'contato joao@exemplo.com' })).toThrow(
-      /e-mail/i,
-    );
+    expect(() => garantirSemDadoPessoal({ nota: 'contato joao@exemplo.com' })).toThrow(/e-mail/i);
   });
 
   it('não confunde número de votos com documento', () => {

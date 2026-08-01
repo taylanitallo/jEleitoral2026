@@ -14,7 +14,11 @@ import { useSessao } from '@/lib/useSessao';
  */
 
 const CARGOS_DEMONSTRACAO = [
-  { id: '00000000-0000-4000-8000-000000000006', nome: 'Deputado Federal', quantidadeVotosPermitida: 1 },
+  {
+    id: '00000000-0000-4000-8000-000000000006',
+    nome: 'Deputado Federal',
+    quantidadeVotosPermitida: 1,
+  },
   { id: '00000000-0000-4000-8000-000000000005', nome: 'Senador', quantidadeVotosPermitida: 2 },
   { id: '00000000-0000-4000-8000-000000000003', nome: 'Governador', quantidadeVotosPermitida: 1 },
 ];

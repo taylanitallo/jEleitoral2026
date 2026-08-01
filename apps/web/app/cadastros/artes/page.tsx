@@ -1,13 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BarraAcoes,
-  Botao,
-  EstadoCarregando,
-  EstadoErro,
-  EstadoVazio,
-} from '@jeleitoral/ui';
+import { BarraAcoes, Botao, EstadoCarregando, EstadoErro, EstadoVazio } from '@jeleitoral/ui';
 import {
   RotuloTipoMaterialGrafico,
   TipoMaterialGrafico,
@@ -215,11 +209,7 @@ export default function PaginaArtes(): JSX.Element {
               render: (linha) => {
                 const ultima = linha.versoes?.[0];
                 return ultima ? (
-                  <Botao
-                    variante="sutil"
-                    tamanho="pequeno"
-                    onClick={() => void baixar(ultima.id)}
-                  >
+                  <Botao variante="sutil" tamanho="pequeno" onClick={() => void baixar(ultima.id)}>
                     Baixar v{ultima.versao}
                   </Botao>
                 ) : (

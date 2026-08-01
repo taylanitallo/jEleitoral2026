@@ -90,9 +90,8 @@ function ConteudoPainel(): JSX.Element {
 
       {!carregandoOpcoes && opcoes.uf.length === 0 ? (
         <p className="rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-3 py-2 text-sm text-[hsl(var(--texto-fraco))]">
-          As tabelas de referência do IBGE ainda não foram carregadas neste ambiente, então o
-          filtro por UF e município está sem opções. Rode <code>pnpm ibge:sincronizar</code> na
-          API.
+          As tabelas de referência do IBGE ainda não foram carregadas neste ambiente, então o filtro
+          por UF e município está sem opções. Rode <code>pnpm ibge:sincronizar</code> na API.
         </p>
       ) : null}
 
@@ -118,20 +117,12 @@ function ConteudoPainel(): JSX.Element {
               valor={resumo.eleitoresMapeados}
               unidade="pessoas"
             />
-            <CartaoIndicador
-              rotulo="Domicílios visitados"
-              valor={resumo.domiciliosVisitados}
-            />
-            <CartaoIndicador
-              rotulo="Entrevistas concluídas"
-              valor={resumo.entrevistasConcluidas}
-            />
+            <CartaoIndicador rotulo="Domicílios visitados" valor={resumo.domiciliosVisitados} />
+            <CartaoIndicador rotulo="Entrevistas concluídas" valor={resumo.entrevistasConcluidas} />
             <CartaoIndicador
               rotulo="Cobertura do recorte"
               valor={
-                resumo.eleitoradoDoRecorte > 0
-                  ? formatarPercentual(resumo.coberturaAmostral)
-                  : '—'
+                resumo.eleitoradoDoRecorte > 0 ? formatarPercentual(resumo.coberturaAmostral) : '—'
               }
               detalhe={
                 resumo.eleitoradoDoRecorte > 0

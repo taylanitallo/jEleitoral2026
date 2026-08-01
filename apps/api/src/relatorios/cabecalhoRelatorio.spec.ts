@@ -61,7 +61,7 @@ describe('tarja de uso interno', () => {
   });
 });
 
-describe('marca d\'água', () => {
+describe("marca d'água", () => {
   it('traz nome, CPF parcial e momento', () => {
     const marca = montarMarcaDagua(
       { nome: 'Ana Coordenadora', cpfParcial: '123.***.***-09' },

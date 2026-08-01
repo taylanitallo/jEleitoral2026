@@ -43,7 +43,7 @@ describe('avaliarMesclagem — decisão automática', () => {
 
   it('ignora acentuação e caixa na comparação de nome', () => {
     const avaliacao = avaliarMesclagem(
-      manual({ nomeUrna: 'José Antônio' , nomeCompleto: 'José Antônio Pereira' }),
+      manual({ nomeUrna: 'José Antônio', nomeCompleto: 'José Antônio Pereira' }),
       oficial({ nomeUrna: 'JOSE ANTONIO', nomeCompleto: 'JOSE ANTONIO PEREIRA' }),
     );
     expect(avaliacao.decisao).toBe('MESCLAR');
@@ -109,11 +109,26 @@ describe('parearCandidaturas', () => {
   it('não atribui a mesma candidatura oficial a dois pré-candidatos', () => {
     // Dois irmãos na mesma chapa, nomes muito parecidos.
     const manuais = [
-      manual({ id: 'a', nomeUrna: 'Carlos Andrade', nomeCompleto: 'Carlos Andrade', numeroUrna: '1010' }),
-      manual({ id: 'b', nomeUrna: 'Carlos Andrade', nomeCompleto: 'Carlos Andrade', numeroUrna: '2020' }),
+      manual({
+        id: 'a',
+        nomeUrna: 'Carlos Andrade',
+        nomeCompleto: 'Carlos Andrade',
+        numeroUrna: '1010',
+      }),
+      manual({
+        id: 'b',
+        nomeUrna: 'Carlos Andrade',
+        nomeCompleto: 'Carlos Andrade',
+        numeroUrna: '2020',
+      }),
     ];
     const oficiais = [
-      oficial({ idTse: 1, nomeUrna: 'CARLOS ANDRADE', nomeCompleto: 'CARLOS ANDRADE', numeroUrna: '1010' }),
+      oficial({
+        idTse: 1,
+        nomeUrna: 'CARLOS ANDRADE',
+        nomeCompleto: 'CARLOS ANDRADE',
+        numeroUrna: '1010',
+      }),
     ];
 
     const pares = parearCandidaturas(manuais, oficiais);
@@ -127,7 +142,12 @@ describe('parearCandidaturas', () => {
     const manuais = [manual({ id: 'a' })];
     const oficiais = [
       oficial({ idTse: 1 }),
-      oficial({ idTse: 2, nomeUrna: 'MARIA DA SILVA', nomeCompleto: 'MARIA DA SILVA', numeroUrna: '4321' }),
+      oficial({
+        idTse: 2,
+        nomeUrna: 'MARIA DA SILVA',
+        nomeCompleto: 'MARIA DA SILVA',
+        numeroUrna: '4321',
+      }),
     ];
     const pares = parearCandidaturas(manuais, oficiais);
     expect(pares).toHaveLength(1);

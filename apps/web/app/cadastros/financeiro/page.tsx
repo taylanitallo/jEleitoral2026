@@ -80,7 +80,9 @@ export default function PaginaFinanceiro(): JSX.Element {
         // Território é opcional, mas ou vão os dois campos ou nenhum: um nível
         // sem identificador produz um custo que nenhuma tela consegue somar.
         nivelTerritorio: nivel || undefined,
-        idTerritorio: nivel ? String(formulario.get('idTerritorio')).trim() || undefined : undefined,
+        idTerritorio: nivel
+          ? String(formulario.get('idTerritorio')).trim() || undefined
+          : undefined,
       });
       definirAberto(false);
       resumo.recarregar();
@@ -150,7 +152,13 @@ export default function PaginaFinanceiro(): JSX.Element {
           </Campo>
 
           <Campo id="status" rotulo="Situação" obrigatorio>
-            <select id="status" name="status" required defaultValue="PREVISTO" className={classeControle}>
+            <select
+              id="status"
+              name="status"
+              required
+              defaultValue="PREVISTO"
+              className={classeControle}
+            >
               {StatusLancamento.options.map((valor) => (
                 <option key={valor} value={valor}>
                   {valor.charAt(0) + valor.slice(1).toLowerCase()}
@@ -247,9 +255,7 @@ export default function PaginaFinanceiro(): JSX.Element {
           />
           <CartaoIndicador
             rotulo="Fôlego de caixa"
-            valor={
-              resumo.dados.diasDeCaixa === null ? '—' : `${resumo.dados.diasDeCaixa} dias`
-            }
+            valor={resumo.dados.diasDeCaixa === null ? '—' : `${resumo.dados.diasDeCaixa} dias`}
             detalhe={`Faltam ${resumo.dados.diasFaltandoParaOPleito} dias para o pleito`}
             advertencia={resumo.dados.alerta}
           />

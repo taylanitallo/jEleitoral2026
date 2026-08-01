@@ -135,7 +135,10 @@ export function gerarPdf(
 
     const escreverLinha = (valores: string[], negrito: boolean): void => {
       const y = documento.y;
-      documento.font(negrito ? 'Helvetica-Bold' : 'Helvetica').fontSize(8).fillColor('#000');
+      documento
+        .font(negrito ? 'Helvetica-Bold' : 'Helvetica')
+        .fontSize(8)
+        .fillColor('#000');
       valores.forEach((valor, indice) => {
         documento.text(valor, 40 + indice * larguraColuna, y, {
           width: larguraColuna - 4,
