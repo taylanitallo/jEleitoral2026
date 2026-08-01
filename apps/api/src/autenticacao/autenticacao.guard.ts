@@ -17,6 +17,17 @@ import { carregarConfiguracao } from '../comum/configuracao.js';
 export const ROTA_PUBLICA = 'rota_publica';
 export const Publica = (): MethodDecorator & ClassDecorator => SetMetadata(ROTA_PUBLICA, true);
 
+/**
+ * Rota autenticada que NÃO exige o segundo fator.
+ *
+ * Existe por um problema de partida real: o perfil ADMINISTRADOR exige MFA, mas
+ * o primeiro administrador ainda não tem fator inscrito. Sem esta exceção ele
+ * autentica e é barrado em todas as rotas — inclusive na que serviria para
+ * inscrever o fator. Use com parcimônia; hoje só a inscrição de MFA a usa.
+ */
+export const DISPENSA_MFA = 'dispensa_mfa';
+export const DispensaMfa = (): MethodDecorator & ClassDecorator => SetMetadata(DISPENSA_MFA, true);
+
 /** Exige uma permissão, opcionalmente com escopo mínimo. */
 export const PERMISSAO_EXIGIDA = 'permissao_exigida';
 export const ExigePermissao = (
@@ -81,7 +92,12 @@ export class AutenticacaoGuard implements CanActivate {
     const claims = await this.verificarToken(token);
     requisicao.claims = claims;
 
-    if (PERFIS_COM_MFA_OBRIGATORIO.has(claims.perfil) && !claims.mfaVerificado) {
+    const dispensaMfa = this.reflector.getAllAndOverride<boolean>(DISPENSA_MFA, [
+      contexto.getHandler(),
+      contexto.getClass(),
+    ]);
+
+    if (!dispensaMfa && PERFIS_COM_MFA_OBRIGATORIO.has(claims.perfil) && !claims.mfaVerificado) {
       throw new ForbiddenException(
         'Este perfil exige verificação em duas etapas. Conclua a verificação para continuar.',
       );

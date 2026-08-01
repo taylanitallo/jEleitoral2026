@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { ClaimsUsuario } from '@jeleitoral/tipos';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { carregarConfiguracao } from '../comum/configuracao.js';
-import { Publica } from './autenticacao.guard.js';
+import { DispensaMfa, Publica } from './autenticacao.guard.js';
 import { Claims } from './claimsUsuario.decorator.js';
 
 export const NOME_COOKIE_SESSAO = 'jeleitoral_sessao';
@@ -164,6 +164,43 @@ export class AutenticacaoController {
     this.gravarCookies(resposta, data);
     void this.registrarAutenticacao(data.access_token, requisicao, 'AUTENTICAR');
     return { ok: true };
+  }
+
+  /**
+   * Inscreve um segundo fator (TOTP) e devolve o QR para o aplicativo
+   * autenticador.
+   *
+   * Dispensada do portão de MFA de propósito: sem isso o primeiro
+   * administrador não teria como inscrever o fator que o portão exige dele.
+   */
+  @Post('mfa/inscrever')
+  @DispensaMfa()
+  @HttpCode(HttpStatus.OK)
+  async inscreverMfa(
+    @Req() requisicao: Request,
+  ): Promise<{ idFator: string; qrCode: string; segredo: string }> {
+    const token = (requisicao.cookies as Record<string, string> | undefined)?.[NOME_COOKIE_SESSAO];
+    if (!token) throw new UnauthorizedException('Sessão não encontrada.');
+
+    const supabase = createClient(
+      this.configuracao.SUPABASE_URL,
+      this.configuracao.SUPABASE_CHAVE_ANONIMA,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      },
+    );
+
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    if (error || !data) {
+      throw new UnauthorizedException('Não foi possível inscrever o segundo fator.');
+    }
+
+    return {
+      idFator: data.id,
+      qrCode: data.totp.qr_code,
+      segredo: data.totp.secret,
+    };
   }
 
   @Post('sair')
