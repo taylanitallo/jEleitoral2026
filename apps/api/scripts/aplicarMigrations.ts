@@ -5,7 +5,7 @@
  * produção quem aplica é `supabase db push` no pipeline — nunca alguém rodando
  * SQL à mão no painel.
  *
- * O que já foi aplicado fica registrado em `public.migrations_aplicadas`. Sem
+ * O que já foi aplicado fica registrado em `manutencao.migrations_aplicadas`. Sem
  * esse controle, rodar duas vezes falhava em `type "escopo_permissao" already
  * exists` — e a única saída era recriar o banco, o que num ambiente com dados
  * de campo não é saída nenhuma.
@@ -43,15 +43,40 @@ async function principal(): Promise<void> {
   await cliente.connect();
 
   try {
+    /*
+     * A escrituração vive em `manutencao`, não em `public`.
+     *
+     * `public` é o esquema de dados de campo, e lá toda tabela precisa de
+     * `id_organizacao` e política de RLS — a cobertura de RLS quebra o build
+     * quando alguma não tem, e é isso que impede um vazamento entre inquilinos
+     * de entrar despercebido. Esta tabela não é dado de cliente e não deve
+     * relaxar aquela regra para caber.
+     */
+    await cliente.query('create schema if not exists manutencao');
     await cliente.query(`
-      create table if not exists public.migrations_aplicadas (
+      create table if not exists manutencao.migrations_aplicadas (
         arquivo text primary key,
         aplicada_em timestamptz not null default now()
       )
     `);
 
+    // Bancos que registraram no lugar antigo trazem o histórico junto, para que
+    // esta mudança não faça as migrations já aplicadas parecerem pendentes.
+    await cliente.query(`
+      do $$
+      begin
+        if to_regclass('public.migrations_aplicadas') is not null then
+          insert into manutencao.migrations_aplicadas (arquivo, aplicada_em)
+            select arquivo, aplicada_em from public.migrations_aplicadas
+            on conflict (arquivo) do nothing;
+          drop table public.migrations_aplicadas;
+        end if;
+      end;
+      $$
+    `);
+
     const { rows } = await cliente.query<{ arquivo: string }>(
-      'select arquivo from public.migrations_aplicadas',
+      'select arquivo from manutencao.migrations_aplicadas',
     );
     const jaAplicadas = new Set(rows.map((linha) => linha.arquivo));
 
@@ -71,7 +96,7 @@ async function principal(): Promise<void> {
       );
       for (const arquivo of adotadas) {
         await cliente.query(
-          'insert into public.migrations_aplicadas (arquivo) values ($1) on conflict do nothing',
+          'insert into manutencao.migrations_aplicadas (arquivo) values ($1) on conflict do nothing',
           [arquivo],
         );
         jaAplicadas.add(arquivo);
@@ -91,7 +116,7 @@ async function principal(): Promise<void> {
       const sql = await readFile(join(DIRETORIO_MIGRATIONS, arquivo), 'utf8');
       process.stdout.write(`→ ${arquivo}\n`);
       await cliente.query(sql);
-      await cliente.query('insert into public.migrations_aplicadas (arquivo) values ($1)', [
+      await cliente.query('insert into manutencao.migrations_aplicadas (arquivo) values ($1)', [
         arquivo,
       ]);
     }
