@@ -161,6 +161,62 @@ class TerritorioController {
     return this.cep.consultar(cep);
   }
 
+  /**
+   * UFs disponíveis, direto da tabela de referência.
+   *
+   * As telas liam uma lista fixa no código — e como só havia demonstração de São
+   * Paulo, o filtro mostrava "SP" e nada mais, dando a impressão de que o sistema
+   * atendia um estado só. A lista real só existe depois de `pnpm ibge:sincronizar`;
+   * se vier vazia, é carga faltando, não estado inexistente.
+   */
+  @Get('estados')
+  @ExigePermissao('territorio.ler')
+  async estados(@Claims() claims: ClaimsUsuario): Promise<unknown[]> {
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select e.id_ibge as "idIbge", e.sigla, e.nome, e.regiao,
+                (select count(*) from public.municipios m where m.id_estado = e.id_ibge)
+                  ::int as municipios
+           from public.estados e
+          order by e.nome`,
+      );
+      return rows;
+    });
+  }
+
+  /**
+   * Municípios de uma UF, com busca por nome opcional.
+   *
+   * A busca usa a coluna normalizada: quem digita "sao jose" precisa achar
+   * "São José", senão o operador conclui que o município não foi carregado.
+   */
+  @Get('municipios')
+  @ExigePermissao('territorio.ler')
+  async municipios(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
+    const parametros = z
+      .object({
+        uf: z.string().length(2).toUpperCase().optional(),
+        busca: z.string().trim().min(2).optional(),
+        limite: z.coerce.number().int().min(1).max(1000).default(500),
+      })
+      .parse(consulta);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select m.id_ibge as "idIbge", m.nome, e.sigla as uf, m.nome_mesorregiao as mesorregiao,
+                m.populacao
+           from public.municipios m
+           join public.estados e on e.id_ibge = m.id_estado
+          where ($1::text is null or e.sigla = $1::text)
+            and ($2::text is null or m.nome_normalizado like '%' || public.normalizar_texto($2) || '%')
+          order by m.nome
+          limit $3`,
+        [parametros.uf ?? null, parametros.busca ?? null, parametros.limite],
+      );
+      return rows;
+    });
+  }
+
   @Get('curadoria')
   @ExigePermissao('territorio.gerenciar')
   async curadoria(

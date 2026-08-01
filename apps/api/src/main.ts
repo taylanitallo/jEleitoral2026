@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+// Carrega o .env quando existir. Em produção as variáveis já vêm do provedor e
+// o arquivo não existe — o dotenv simplesmente não faz nada, sem erro.
+import 'dotenv/config';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';

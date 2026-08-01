@@ -186,6 +186,38 @@ class CandidatosController {
     });
   }
 
+  /**
+   * Cargos em disputa, da tabela de referência semeada com os códigos do TSE.
+   *
+   * As telas traziam a lista fixa no código, o que dava certo até o dia em que
+   * desse errado em silêncio — um código de cargo divergente do TSE só apareceria
+   * na hora de cruzar com a apuração.
+   */
+  @Get('cargos')
+  @ExigePermissao('candidatos.ler')
+  async cargos(@Claims() claims: ClaimsUsuario): Promise<unknown[]> {
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select id, codigo_tse as "codigoTse", nome, abrangencia,
+                quantidade_votos_permitida as "quantidadeVotosPermitida"
+           from public.cargos
+          order by codigo_tse`,
+      );
+      return rows;
+    });
+  }
+
+  @Get('partidos')
+  @ExigePermissao('candidatos.ler')
+  async partidos(@Claims() claims: ClaimsUsuario): Promise<unknown[]> {
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        'select id, numero, sigla, nome from public.partidos order by numero',
+      );
+      return rows;
+    });
+  }
+
   @Post()
   @ExigePermissao('candidatos.gerenciar')
   async criar(@Claims() claims: ClaimsUsuario, @Body() corpo: unknown): Promise<{ id: string }> {

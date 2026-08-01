@@ -1,4 +1,5 @@
-import { build } from 'esbuild';
+import { build, context } from 'esbuild';
+import { spawn } from 'node:child_process';
 import esbuildPluginTsc from 'esbuild-plugin-tsc';
 import { readFileSync } from 'node:fs';
 
@@ -26,7 +27,7 @@ const externos = Object.keys({ ...pacote.dependencies, ...pacote.devDependencies
   (nome) => !DO_WORKSPACE.test(nome),
 );
 
-await build({
+const opcoes = {
   entryPoints: ['src/main.ts'],
   outfile: 'dist/main.js',
   bundle: true,
@@ -46,4 +47,39 @@ await build({
   ],
   plugins: [esbuildPluginTsc({ force: true })],
   logLevel: 'info',
-});
+};
+
+const observar = process.argv.includes('--observar');
+
+if (!observar) {
+  await build(opcoes);
+} else {
+  /*
+   * Modo desenvolvimento: reconstrói e reinicia o processo a cada alteração.
+   *
+   * `nest start --watch` não serve aqui — o tsconfig tem `noEmit`, então ele
+   * compila, não grava nada, e executa o bundle anterior. O sintoma é uma
+   * alteração que não aparece, ou pior: um erro de configuração que já foi
+   * corrigido e continua reaparecendo.
+   */
+  let processo = null;
+
+  const reiniciar = () => {
+    if (processo) processo.kill();
+    processo = spawn(process.execPath, ['dist/main.js'], { stdio: 'inherit' });
+  };
+
+  const ctx = await context({
+    ...opcoes,
+    plugins: [
+      ...opcoes.plugins,
+      { name: 'reiniciar', setup: (b) => b.onEnd(() => reiniciar()) },
+    ],
+  });
+
+  await ctx.watch();
+  process.on('SIGINT', () => {
+    processo?.kill();
+    void ctx.dispose().then(() => process.exit(0));
+  });
+}

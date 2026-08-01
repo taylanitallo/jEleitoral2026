@@ -16,6 +16,7 @@ import type { ClassificacaoEleitor } from '@jeleitoral/tipos';
 import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
 import { CartaoIndicador } from '@/componentes/dashboard/CartaoIndicador';
 import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
+import { useOpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useResumoPainel } from '@/lib/useResumoPainel';
 import { useSessao } from '@/lib/useSessao';
 
@@ -41,6 +42,20 @@ function ConteudoPainel(): JSX.Element {
   );
 
   const { resumo, carregando, erro, recarregar } = useResumoPainel(filtro);
+  const { opcoes, carregando: carregandoOpcoes } = useOpcoesFiltro();
+
+  if (carregandoSessao) {
+    return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
+  }
+
+  if (!idCampanha) {
+    return (
+      <EstadoVazio
+        titulo="Nenhuma campanha vinculada"
+        descricao={`O usuário ${sessao?.email ?? ''} não está vinculado a nenhuma campanha. Peça ao administrador da organização para incluí-lo.`}
+      />
+    );
+  }
 
   if (carregandoSessao) {
     return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
@@ -71,13 +86,15 @@ function ConteudoPainel(): JSX.Element {
 
       <TarjaUsoInterno natureza="LEVANTAMENTO_INTERNO" />
 
-      <BarraFiltros
-        idCampanha={idCampanha}
-        opcoes={{
-          idCargo: [{ valor: 'cargo-df', rotulo: 'Deputado Federal' }],
-          uf: [{ valor: 'SP', rotulo: 'São Paulo' }],
-        }}
-      />
+      <BarraFiltros idCampanha={idCampanha} opcoes={opcoes} />
+
+      {!carregandoOpcoes && opcoes.uf.length === 0 ? (
+        <p className="rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-3 py-2 text-sm text-[hsl(var(--texto-fraco))]">
+          As tabelas de referência do IBGE ainda não foram carregadas neste ambiente, então o
+          filtro por UF e município está sem opções. Rode <code>pnpm ibge:sincronizar</code> na
+          API.
+        </p>
+      ) : null}
 
       {erro ? (
         <EstadoErro
