@@ -36,7 +36,14 @@ export function middleware(requisicao: NextRequest): NextResponse {
 
 export const config = {
   matcher: [
-    // Tudo, menos estáticos do Next, favicon e a própria API interna.
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Tudo, menos estáticos do Next, favicon e — sobretudo — `/api`.
+     *
+     * `/api` é o encaminhamento para a API, que faz a própria autenticação. Com
+     * ele dentro do matcher, o middleware redireciona a chamada de login para a
+     * tela de login porque ainda não existe cookie: nenhuma sessão jamais é
+     * criada, e o sintoma no navegador é um 307 sem explicação.
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
