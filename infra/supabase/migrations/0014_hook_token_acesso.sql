@@ -109,25 +109,44 @@ comment on function public.hook_token_acesso(jsonb) is
   'Custom Access Token Hook do Supabase Auth. Injeta id_organizacao, campanhas, '
   'equipes, territorios e permissoes no JWT. Sem ele, toda política RLS nega tudo.';
 
--- O Auth do Supabase executa o hook com o papel `supabase_auth_admin`.
-grant execute on function public.hook_token_acesso(jsonb) to supabase_auth_admin;
 revoke execute on function public.hook_token_acesso(jsonb) from authenticated, anon, public;
 
--- Leitura estritamente necessária para o hook montar os claims.
-grant usage on schema public, provedor to supabase_auth_admin;
-grant select on
-  public.usuarios, public.perfis_acesso, public.perfil_permissoes, public.permissoes,
-  public.usuario_campanhas, public.equipe_membros, public.equipes, public.secao_bairros,
-  provedor.usuarios
-  to supabase_auth_admin;
-
--- O hook roda como `supabase_auth_admin`, que não é dono das tabelas e seria
--- barrado pelas políticas. Estas políticas dão a ele — e só a ele — a leitura
--- necessária.
+/*
+ * Concessões ao papel do Auth.
+ *
+ * `supabase_auth_admin` só existe em projeto Supabase. O CI roda contra um
+ * PostgreSQL cru e descartável, onde o papel não existe — e um `grant` a papel
+ * inexistente aborta a migration inteira. Era o que derrubava o job de banco em
+ * todo push, desde o primeiro.
+ *
+ * Pular as concessões quando o papel não existe é seguro: sem Supabase Auth não
+ * há hook para executar, e o teste de isolamento não depende dele. Onde o papel
+ * existe — homologação e produção — nada muda.
+ */
 do $$
 declare
   tabela text;
 begin
+  if not exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+    raise notice 'Papel supabase_auth_admin ausente; concessões do hook ignoradas.';
+    return;
+  end if;
+
+  execute 'grant execute on function public.hook_token_acesso(jsonb) to supabase_auth_admin';
+
+  -- Leitura estritamente necessária para o hook montar os claims.
+  execute 'grant usage on schema public, provedor to supabase_auth_admin';
+  execute $conceder$
+    grant select on
+      public.usuarios, public.perfis_acesso, public.perfil_permissoes, public.permissoes,
+      public.usuario_campanhas, public.equipe_membros, public.equipes, public.secao_bairros,
+      provedor.usuarios
+      to supabase_auth_admin
+  $conceder$;
+
+  -- O hook roda como `supabase_auth_admin`, que não é dono das tabelas e seria
+  -- barrado pelas políticas. Estas políticas dão a ele — e só a ele — a leitura
+  -- necessária.
   foreach tabela in array array[
     'usuarios', 'perfis_acesso', 'perfil_permissoes',
     'usuario_campanhas', 'equipe_membros', 'equipes', 'secao_bairros'
