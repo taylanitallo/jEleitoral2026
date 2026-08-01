@@ -4,6 +4,20 @@ const configuracao = {
   // Os pacotes do monorepo são publicados como TypeScript puro.
   transpilePackages: ['@jeleitoral/ui', '@jeleitoral/tipos', '@jeleitoral/utilitarios'],
   poweredByHeader: false,
+  /*
+   * `next build` e `next dev` escrevem no MESMO `.next`.
+   *
+   * Rodar um build com o servidor de desenvolvimento no ar substitui os
+   * artefatos que ele está servindo, e o dev passa a entregar um manifesto que
+   * aponta para arquivos inexistentes. A página abre, o HTML vem, e o CSS e o
+   * JavaScript dão 404 — a tela aparece sem estilo nenhum e o formulário faz
+   * submit nativo em vez de chamar a API. O sintoma parece "o login não
+   * funciona", e nada nos logs liga uma coisa à outra.
+   *
+   * O padrão continua `.next`, que é o que a Vercel espera. Para conferir um
+   * build de produção sem derrubar o dev, use `pnpm build:local`.
+   */
+  distDir: process.env.NEXT_DIRETORIO_BUILD ?? '.next',
   /**
    * A API é servida na MESMA ORIGEM, por proxy.
    *
