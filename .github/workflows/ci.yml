@@ -83,6 +83,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Um PostgreSQL cru nao tem os papeis que o Supabase provisiona, e a API
+      # roda toda consulta sob `set local role authenticated`. Sem cria-los, as
+      # migrations abortam no primeiro `grant` — e, pior, os testes de
+      # isolamento acabariam exercitando um papel que producao nao usa.
+      - name: Criar os papeis do Supabase
+        run: psql "$BANCO_URL" -v ON_ERROR_STOP=1 -f infra/supabase/papeis-para-teste.sql
       - name: Aplicar migrations
         run: pnpm --filter @jeleitoral/api banco:aplicar
       - name: Cobertura de RLS (quebra o build se faltar política)
