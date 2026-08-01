@@ -1,0 +1,128 @@
+/*
+ * Folha de impressão. Toda listagem e todo dashboard precisam sair no papel de
+ * forma legível — em campanha se imprime muito, e a versão impressa é o que
+ * circula na reunião de coordenação.
+ */
+
+@media print {
+  :root {
+    /* Impressão é sempre em tema claro, independente da preferência do usuário. */
+    --fundo: 0 0% 100%;
+    --fundo-sutil: 0 0% 100%;
+    --superficie: 0 0% 100%;
+    --texto: 0 0% 0%;
+    --texto-secundario: 0 0% 25%;
+    --borda: 0 0% 70%;
+    color-scheme: light;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt;
+  }
+
+  /* Cromo da aplicação não vai para o papel. */
+  [data-imprimir='ocultar'],
+  nav,
+  aside,
+  .barra-acoes,
+  button,
+  [role='dialog'] {
+    display: none !important;
+  }
+
+  [data-imprimir='exibir'] {
+    display: block !important;
+  }
+
+  /* Cabeçalho e rodapé de relatório aparecem só na impressão. */
+  .cabecalho-impressao,
+  .rodape-impressao {
+    display: block !important;
+  }
+
+  .cabecalho-impressao {
+    border-bottom: 1pt solid #000;
+    margin-bottom: 8pt;
+    padding-bottom: 6pt;
+  }
+
+  .rodape-impressao {
+    border-top: 0.5pt solid #999;
+    margin-top: 8pt;
+    padding-top: 4pt;
+    font-size: 7pt;
+    color: #444;
+  }
+
+  /*
+   * Tarja de uso interno. Aparece obrigatoriamente quando o levantamento é
+   * LEVANTAMENTO_INTERNO — divulgar pesquisa não registrada sujeita a multa
+   * (Lei 9.504/97, art. 33).
+   */
+  .tarja-uso-interno {
+    display: block !important;
+    border: 2pt solid #000;
+    padding: 4pt 8pt;
+    margin-bottom: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
+  /* Marca d'água pessoal do operador — inibe vazamento de relatório impresso. */
+  .marca-dagua {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    font-size: 28pt;
+    color: rgb(0 0 0 / 0.07);
+    transform: rotate(-30deg);
+    text-align: center;
+    line-height: 3;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group; /* repete o cabeçalho em cada página */
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th,
+  td {
+    border: 0.5pt solid #999;
+    padding: 3pt 5pt;
+    text-align: left;
+  }
+
+  /* Não quebrar um gráfico ou um cartão de indicador ao meio. */
+  .grafico,
+  .cartao-indicador,
+  .evitar-quebra {
+    page-break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: '';
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm 12mm 16mm 12mm;
+  }
+
+  @page :first {
+    margin-top: 10mm;
+  }
+}

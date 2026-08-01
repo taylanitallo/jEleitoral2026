@@ -1,0 +1,14 @@
+/*
+ * A ordem importa: `@import` precisa preceder qualquer outra regra, inclusive
+ * as diretivas do Tailwind. Invertê-la faz o webpack recusar a folha inteira.
+ */
+@import '@jeleitoral/ui/tema/tokens.css';
+@import '@jeleitoral/ui/impressao.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --fonte-interface: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}

@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main, homologacao]
+  pull_request:
+    branches: [main, homologacao]
+
+# Uma execução por branch: um push novo cancela a anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20.18.0'
+  PNPM_VERSION: '9.12.0'
+
+jobs:
+  segredos:
+    name: Varredura de segredos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  qualidade:
+    name: Lint, tipos e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Formatação
+        run: pnpm formatar:verificar
+      - name: Lint
+        run: pnpm lint
+      - name: Verificação de tipos
+        run: pnpm typecheck
+      - name: Testes unitários
+        run: pnpm test
+
+  banco:
+    name: Migrations, cobertura de RLS e isolamento
+    runs-on: ubuntu-latest
+    # O banco roda como serviço para que as políticas RLS sejam exercitadas de
+    # verdade. Testar isolamento com mock não prova nada: o que precisamos
+    # verificar é o comportamento do PostgreSQL, não o do nosso código.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: jeleitoral_teste
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      BANCO_URL: postgresql://postgres:postgres@localhost:5432/jeleitoral_teste
+      CHAVE_CRIPTOGRAFIA_AES: 0000000000000000000000000000000000000000000000000000000000000000
+      SEGREDO_HMAC_INDICE: 1111111111111111111111111111111111111111111111111111111111111111
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Aplicar migrations
+        run: pnpm --filter @jeleitoral/api banco:aplicar
+      - name: Cobertura de RLS (quebra o build se faltar política)
+        run: pnpm --filter @jeleitoral/api test:rls
+      - name: Isolamento cruzado entre organizações e campanhas
+        run: pnpm --filter @jeleitoral/api test:isolamento
+
+  construir:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [qualidade]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build

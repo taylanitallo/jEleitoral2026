@@ -1,0 +1,24 @@
+{
+  "name": "@jeleitoral/utilitarios",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mascaras": "./src/mascaras.ts",
+    "./validadores": "./src/validadores.ts",
+    "./formatadores": "./src/formatadores.ts",
+    "./texto": "./src/texto.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:observar": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.3"
+  }
+}

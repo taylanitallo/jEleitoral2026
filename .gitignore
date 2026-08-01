@@ -1,0 +1,46 @@
+# dependências
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ambiente — NUNCA versionar segredos
+.env
+.env.*
+!.env.exemplo
+
+# Configuração de sessão do Claude Code. Fora do versionamento por inteiro:
+# o allowlist de permissões registra comandos executados e já capturou uma
+# senha de banco uma vez. Repositório público não é lugar para esse risco.
+.claude/
+
+# supabase local
+infra/supabase/.temp/
+supabase/.temp/
+supabase/.branches/
+infra/supabase/.branches/
+
+# dados baixados pelos ETLs (podem ter dezenas de GB)
+infra/etl/dados/
+*.zip
+*.csv.gz
+
+# logs e cobertura
+*.log
+npm-debug.log*
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# editores / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
