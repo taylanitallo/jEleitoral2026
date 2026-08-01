@@ -1,0 +1,8 @@
+node_modules
+.next
+dist
+coverage
+.git
+infra/etl/dados
+playwright-report
+test-results

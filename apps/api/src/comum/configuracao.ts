@@ -15,7 +15,9 @@ const EsquemaConfiguracao = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_CHAVE_ANONIMA: z.string().min(20),
   SUPABASE_CHAVE_SERVICO: z.string().min(20),
-  SUPABASE_JWT_SEGREDO: z.string().min(20),
+  // Mantido apenas para projetos Supabase legados que ainda assinam em HS256.
+  // Projetos atuais usam ES256 + JWKS, e a verificação não precisa de segredo.
+  SUPABASE_JWT_SEGREDO: z.string().optional(),
   BANCO_URL: z.string().min(10),
 
   // 32 bytes em hexadecimal. AES-256-GCM exige exatamente isso.

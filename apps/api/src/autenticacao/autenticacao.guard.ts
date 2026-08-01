@@ -8,7 +8,7 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { jwtVerify } from 'jose';
+import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { Request } from 'express';
 import { ClaimsUsuario, type EscopoPermissao } from '@jeleitoral/tipos';
 import { carregarConfiguracao } from '../comum/configuracao.js';
@@ -50,12 +50,18 @@ declare module 'express' {
 @Injectable()
 export class AutenticacaoGuard implements CanActivate {
   private readonly registrador = new Logger(AutenticacaoGuard.name);
-  private readonly segredo: Uint8Array;
+  private readonly chaves: JWTVerifyGetKey;
   private readonly emDesenvolvimento: boolean;
 
   constructor(private readonly reflector: Reflector) {
     const configuracao = carregarConfiguracao();
-    this.segredo = new TextEncoder().encode(configuracao.SUPABASE_JWT_SEGREDO);
+    // Os tokens de usuário do Supabase são assinados em ES256 e verificados
+    // pelo JWKS público do projeto. O `jose` busca as chaves sob demanda e
+    // refaz a busca quando elas rodam — o que um segredo simétrico fixo não
+    // acompanharia, e é por isso que não há segredo de JWT na configuração.
+    this.chaves = createRemoteJWKSet(
+      new URL('/auth/v1/.well-known/jwks.json', configuracao.SUPABASE_URL),
+    );
     this.emDesenvolvimento = configuracao.AMBIENTE === 'desenvolvimento';
   }
 
@@ -115,7 +121,7 @@ export class AutenticacaoGuard implements CanActivate {
 
   private async verificarToken(token: string): Promise<ClaimsUsuario> {
     try {
-      const { payload } = await jwtVerify(token, this.segredo);
+      const { payload } = await jwtVerify(token, this.chaves);
       // Zod aqui não é preciosismo: um token válido mas com claim faltando
       // (hook do Supabase mal configurado) produziria um `idOrganizacao`
       // indefinido, e toda política RLS negaria sem explicação clara.

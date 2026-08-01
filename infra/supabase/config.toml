@@ -287,9 +287,11 @@ max_frequency = "5s"
 # uri = "pg-functions://postgres/auth/before-user-created-hook"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://<database>/<schema>/<hook_name>"
+# Sem este hook o JWT sai sem id_organizacao/campanhas/permissoes e TODA
+# política RLS nega tudo — o sistema autentica e não enxerga nada.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/hook_token_acesso"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]
