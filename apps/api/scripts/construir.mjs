@@ -1,4 +1,5 @@
 import { build } from 'esbuild';
+import esbuildPluginTsc from 'esbuild-plugin-tsc';
 import { readFileSync } from 'node:fs';
 
 /**
@@ -10,8 +11,13 @@ import { readFileSync } from 'node:fs';
  * um `MODULE_NOT_FOUND` que só aparece no contêiner.
  *
  * Então empacotamos: o código do workspace é embutido no bundle, e tudo o que
- * vem de `node_modules` continua externo (o NestJS usa require dinâmico e
- * decoradores que não sobrevivem bem a bundling).
+ * vem de `node_modules` continua externo (o NestJS usa require dinâmico).
+ *
+ * O plugin do tsc não é opcional: o esbuild **não emite `design:paramtypes`**,
+ * e a injeção de dependência do Nest lê exatamente esses metadados. Sem ele o
+ * processo sobe, mapeia todas as rotas e então falha em cada requisição com
+ * "Cannot read properties of undefined" — um sintoma que não aponta para a
+ * causa.
  */
 const pacote = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
@@ -38,5 +44,6 @@ await build({
     'class-transformer',
     'class-validator',
   ],
+  plugins: [esbuildPluginTsc({ force: true })],
   logLevel: 'info',
 });
