@@ -9,6 +9,7 @@ import {
   Post,
   Req,
   Res,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -166,6 +167,27 @@ export class AutenticacaoController {
     if (PERFIS_QUE_EXIGEM_MFA.has(this.perfilDoToken(data.session.access_token))) {
       const inscricao = await this.prepararInscricaoMfa(supabase);
       if (inscricao) return { precisaMfa: true, precisaInscreverMfa: true, ...inscricao };
+
+      /*
+       * A inscrição falhou — tipicamente porque o TOTP está desligado na
+       * configuração do projeto Supabase deste ambiente.
+       *
+       * Aqui **não** se pode cair no `precisaMfa: false` lá embaixo. Isso
+       * devolvia "entrou" com uma sessão `aal1` que o guard recusa em toda rota
+       * protegida: o usuário via a tela piscar e voltar para o login, sem
+       * nenhuma pista de que o problema era configuração do ambiente. O sintoma
+       * era indistinguível de senha errada — e foi assim que este ambiente
+       * passou por "o login não funciona localmente".
+       *
+       * Falhar aqui, dizendo o que houve, é o comportamento correto: o perfil
+       * exige segundo fator, o ambiente não consegue oferecê-lo, e não existe
+       * sessão utilizável a entregar.
+       */
+      this.limparCookies(resposta);
+      throw new ServiceUnavailableException(
+        'Seu perfil exige segundo fator, mas este ambiente está com o TOTP desabilitado no ' +
+          'Supabase. Habilite `auth.mfa.totp.enroll_enabled` no projeto antes de entrar.',
+      );
     }
 
     void this.registrarAutenticacao(data.session.access_token, requisicao, 'AUTENTICAR');
@@ -236,6 +258,17 @@ export class AutenticacaoController {
   @Post('sair')
   @HttpCode(HttpStatus.NO_CONTENT)
   sair(@Res({ passthrough: true }) resposta: Response): void {
+    this.limparCookies(resposta);
+  }
+
+  /**
+   * Apaga os cookies de sessão.
+   *
+   * Usado ao sair e sempre que o login for abortado no meio: uma sessão parcial
+   * esquecida no navegador faz a próxima tentativa partir de um estado que
+   * ninguém previu.
+   */
+  private limparCookies(resposta: Response): void {
     resposta.clearCookie(NOME_COOKIE_SESSAO, this.servico.opcoesCookie(0));
     resposta.clearCookie(NOME_COOKIE_RENOVACAO, this.servico.opcoesCookie(0));
   }
