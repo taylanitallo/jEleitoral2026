@@ -8,7 +8,9 @@ import type { ErroApi } from '@jeleitoral/tipos';
  * injetado o leria, e uma base de intenção de voto não é lugar para esse risco.
  */
 
-const URL_BASE = process.env['NEXT_PUBLIC_URL_API'] ?? 'http://localhost:3333';
+// Mesma origem: o Next encaminha /api para a Railway (ver next.config.mjs).
+// Assim o cookie de sessão é de primeira parte e o SameSite=Strict vale.
+const URL_BASE = '';
 
 export class ErroDaApi extends Error {
   constructor(

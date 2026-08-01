@@ -8,8 +8,11 @@ import { api, ErroDaApi } from '@/lib/api';
 
 interface RespostaLogin {
   precisaMfa: boolean;
+  precisaInscreverMfa?: boolean;
   idFator?: string;
   idDesafio?: string;
+  qrCode?: string;
+  segredo?: string;
 }
 
 function FormularioEntrada(): JSX.Element {
@@ -21,6 +24,9 @@ function FormularioEntrada(): JSX.Element {
   const [senha, definirSenha] = useState('');
   const [codigo, definirCodigo] = useState('');
   const [desafio, definirDesafio] = useState<{ idFator: string; idDesafio: string } | null>(null);
+  // Presente só na primeira entrada de um perfil que exige MFA e ainda não tem
+  // fator: aí a tela precisa mostrar o QR antes de pedir o código.
+  const [inscricao, definirInscricao] = useState<{ qrCode: string; segredo: string } | null>(null);
   const [erro, definirErro] = useState<string | null>(null);
   const [enviando, definirEnviando] = useState(false);
 
@@ -32,6 +38,9 @@ function FormularioEntrada(): JSX.Element {
       const resposta = await api.enviar<RespostaLogin>('/autenticacao/entrar', { email, senha });
       if (resposta.precisaMfa && resposta.idFator && resposta.idDesafio) {
         definirDesafio({ idFator: resposta.idFator, idDesafio: resposta.idDesafio });
+        if (resposta.precisaInscreverMfa && resposta.qrCode && resposta.segredo) {
+          definirInscricao({ qrCode: resposta.qrCode, segredo: resposta.segredo });
+        }
         return;
       }
       roteador.replace(destino);
@@ -71,7 +80,11 @@ function FormularioEntrada(): JSX.Element {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-[hsl(var(--texto))]">jEleitoral</h1>
         <p className="mt-1 text-sm text-[hsl(var(--texto-secundario))]">
-          {desafio ? 'Verificação em duas etapas' : 'Entre com sua conta da campanha'}
+          {inscricao
+            ? 'Configure a verificação em duas etapas'
+            : desafio
+              ? 'Verificação em duas etapas'
+              : 'Entre com sua conta da campanha'}
         </p>
       </header>
 
@@ -86,6 +99,26 @@ function FormularioEntrada(): JSX.Element {
 
       {desafio ? (
         <form onSubmit={(evento) => void verificarCodigo(evento)} className="flex flex-col gap-4">
+          {inscricao ? (
+            <div className="rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-3">
+              <p className="text-sm text-[hsl(var(--texto-secundario))]">
+                Seu perfil exige verificação em duas etapas. Leia o código abaixo no seu
+                aplicativo autenticador e confirme com o número gerado.
+              </p>
+              <img
+                src={inscricao.qrCode}
+                alt="Código QR para o aplicativo autenticador"
+                className="mx-auto my-3 size-44 rounded bg-white p-2"
+              />
+              <p className="text-center text-xs text-[hsl(var(--texto-fraco))]">
+                Sem câmera? Digite esta chave no aplicativo:
+              </p>
+              <code className="mt-1 block break-all text-center font-mono text-xs text-[hsl(var(--texto))]">
+                {inscricao.segredo}
+              </code>
+            </div>
+          ) : null}
+
           <div>
             <label htmlFor="codigo" className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]">
               Código do aplicativo autenticador

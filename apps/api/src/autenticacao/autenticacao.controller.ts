@@ -12,7 +12,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { CookieOptions, Request, Response } from 'express';
 import { z } from 'zod';
 import { ClaimsUsuario } from '@jeleitoral/tipos';
@@ -28,6 +28,9 @@ const EntradaLogin = z.object({
   email: z.string().email('Informe um e-mail válido.'),
   senha: z.string().min(8, 'A senha tem no mínimo 8 caracteres.'),
 });
+
+/** Espelha o portão do guard. Divergir aqui prenderia o usuário do lado de fora. */
+const PERFIS_QUE_EXIGEM_MFA = new Set(['ADMINISTRADOR', 'FINANCEIRO']);
 
 const EntradaMfa = z.object({
   idFator: z.string(),
@@ -111,7 +114,14 @@ export class AutenticacaoController {
     @Body() corpo: unknown,
     @Res({ passthrough: true }) resposta: Response,
     @Req() requisicao: Request,
-  ): Promise<{ precisaMfa: boolean; idFator?: string; idDesafio?: string }> {
+  ): Promise<{
+    precisaMfa: boolean;
+    precisaInscreverMfa?: boolean;
+    idFator?: string;
+    idDesafio?: string;
+    qrCode?: string;
+    segredo?: string;
+  }> {
     const entrada = EntradaLogin.parse(corpo);
     const supabase = this.servico.clienteAnonimo();
 
@@ -132,20 +142,32 @@ export class AutenticacaoController {
     const precisaMfa =
       garantia?.nextLevel === 'aal2' && garantia.nextLevel !== garantia.currentLevel;
 
+    // A sessão parcial já vale como cookie: o segundo fator é verificado com
+    // ela, e o guard recusa qualquer rota protegida enquanto o AAL não subir.
+    this.gravarCookies(resposta, data.session);
+
     if (precisaMfa) {
       const { data: fatores } = await supabase.auth.mfa.listFactors();
       const fator = fatores?.totp?.[0];
       if (fator) {
         const { data: desafio } = await supabase.auth.mfa.challenge({ factorId: fator.id });
-        // A sessão parcial já vale como cookie: o segundo fator é verificado
-        // com ela, e o guard recusa qualquer rota protegida enquanto o AAL não
-        // subir.
-        this.gravarCookies(resposta, data.session);
         return { precisaMfa: true, idFator: fator.id, idDesafio: desafio?.id };
       }
     }
 
-    this.gravarCookies(resposta, data.session);
+    /*
+     * Partida do perfil que exige MFA e ainda não tem fator.
+     *
+     * Sem este ramo o usuário autentica, o guard barra tudo, e não existe
+     * caminho para inscrever o fator que o guard exige — foi exatamente o que
+     * prendeu o primeiro administrador do lado de fora. Aqui a inscrição é
+     * oferecida no próprio login.
+     */
+    if (PERFIS_QUE_EXIGEM_MFA.has(this.perfilDoToken(data.session.access_token))) {
+      const inscricao = await this.prepararInscricaoMfa(supabase);
+      if (inscricao) return { precisaMfa: true, precisaInscreverMfa: true, ...inscricao };
+    }
+
     void this.registrarAutenticacao(data.session.access_token, requisicao, 'AUTENTICAR');
     return { precisaMfa: false };
   }
@@ -204,30 +226,11 @@ export class AutenticacaoController {
     const supabase = await this.servico.clienteComSessao(token, renovacao);
     if (!supabase) throw new UnauthorizedException('Sessão inválida. Entre novamente.');
 
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
-    if (error || !data) {
-      // A mensagem do Supabase vai para o log: engolir a causa aqui já custou
-      // dois ciclos de diagnóstico às cegas (era 'mfa_totp_enroll_not_enabled').
-      this.registrador.error(`Falha ao inscrever MFA: ${error?.message ?? 'sem detalhe'}`);
+    const inscricao = await this.prepararInscricaoMfa(supabase);
+    if (!inscricao) {
       throw new UnauthorizedException('Não foi possível inscrever o segundo fator.');
     }
-
-    // O fator nasce inativo: só passa a valer depois de uma verificação. Já
-    // devolvemos o desafio para que a tela consiga concluir sem outra chamada.
-    const { data: desafio, error: erroDesafio } = await supabase.auth.mfa.challenge({
-      factorId: data.id,
-    });
-    if (erroDesafio || !desafio) {
-      this.registrador.error(`Falha ao desafiar MFA: ${erroDesafio?.message ?? 'sem detalhe'}`);
-      throw new UnauthorizedException('Não foi possível iniciar a verificação do segundo fator.');
-    }
-
-    return {
-      idFator: data.id,
-      idDesafio: desafio.id,
-      qrCode: data.totp.qr_code,
-      segredo: data.totp.secret,
-    };
+    return inscricao;
   }
 
   @Post('sair')
@@ -258,6 +261,59 @@ export class AutenticacaoController {
       campanhas: claims.campanhas,
       permissoes: claims.permissoes,
       mfaVerificado: claims.mfaVerificado,
+    };
+  }
+
+  /** Lê o perfil direto do token, sem passar pelo guard. */
+  private perfilDoToken(accessToken: string): string {
+    try {
+      const carga = JSON.parse(
+        Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString('utf8'),
+      ) as Record<string, unknown>;
+      return String(carga['perfil'] ?? '');
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Prepara a inscrição de um TOTP: descarta fatores pendentes, inscreve um
+   * novo e já cria o desafio.
+   *
+   * Descartar o pendente não é zelo excessivo — o Supabase recusa uma segunda
+   * inscrição enquanto houver fator não verificado, e o segredo do anterior já
+   * se perdeu. Sem a limpeza, quem abandona a inscrição no meio fica travado
+   * para sempre.
+   */
+  private async prepararInscricaoMfa(
+    supabase: SupabaseClient,
+  ): Promise<{ idFator: string; idDesafio: string; qrCode: string; segredo: string } | null> {
+    const { data: existentes } = await supabase.auth.mfa.listFactors();
+    for (const fator of existentes?.all ?? []) {
+      if (fator.status !== 'verified') {
+        await supabase.auth.mfa.unenroll({ factorId: fator.id });
+      }
+    }
+
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    if (error || !data) {
+      this.registrador.error(`Falha ao inscrever MFA: ${error?.message ?? 'sem detalhe'}`);
+      return null;
+    }
+
+    const { data: desafio, error: erroDesafio } = await supabase.auth.mfa.challenge({
+      factorId: data.id,
+    });
+    if (erroDesafio || !desafio) {
+      this.registrador.error(`Falha ao desafiar MFA: ${erroDesafio?.message ?? 'sem detalhe'}`);
+      return null;
+    }
+
+    return {
+      idFator: data.id,
+      idDesafio: desafio.id,
+      qrCode: data.totp.qr_code,
+      segredo: data.totp.secret,
     };
   }
 
