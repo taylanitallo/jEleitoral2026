@@ -307,9 +307,12 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
+# Ligado: os perfis ADMINISTRADOR e FINANCEIRO exigem segundo fator, e com o
+# TOTP desabilitado no projeto eles autenticam e ficam presos — a inscricao do
+# fator falha com mfa_totp_enroll_not_enabled.
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Injectable,
+  Logger,
   Post,
   Req,
   Res,
@@ -87,6 +88,7 @@ export class AutenticacaoService {
 
 @Controller('autenticacao')
 export class AutenticacaoController {
+  private readonly registrador = new Logger(AutenticacaoController.name);
   private readonly configuracao = carregarConfiguracao();
 
   constructor(
@@ -193,7 +195,7 @@ export class AutenticacaoController {
   @HttpCode(HttpStatus.OK)
   async inscreverMfa(
     @Req() requisicao: Request,
-  ): Promise<{ idFator: string; qrCode: string; segredo: string }> {
+  ): Promise<{ idFator: string; idDesafio: string; qrCode: string; segredo: string }> {
     const cookies = requisicao.cookies as Record<string, string> | undefined;
     const token = cookies?.[NOME_COOKIE_SESSAO];
     const renovacao = cookies?.[NOME_COOKIE_RENOVACAO] ?? '';
@@ -204,11 +206,25 @@ export class AutenticacaoController {
 
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
     if (error || !data) {
+      // A mensagem do Supabase vai para o log: engolir a causa aqui já custou
+      // dois ciclos de diagnóstico às cegas (era 'mfa_totp_enroll_not_enabled').
+      this.registrador.error(`Falha ao inscrever MFA: ${error?.message ?? 'sem detalhe'}`);
       throw new UnauthorizedException('Não foi possível inscrever o segundo fator.');
+    }
+
+    // O fator nasce inativo: só passa a valer depois de uma verificação. Já
+    // devolvemos o desafio para que a tela consiga concluir sem outra chamada.
+    const { data: desafio, error: erroDesafio } = await supabase.auth.mfa.challenge({
+      factorId: data.id,
+    });
+    if (erroDesafio || !desafio) {
+      this.registrador.error(`Falha ao desafiar MFA: ${erroDesafio?.message ?? 'sem detalhe'}`);
+      throw new UnauthorizedException('Não foi possível iniciar a verificação do segundo fator.');
     }
 
     return {
       idFator: data.id,
+      idDesafio: desafio.id,
       qrCode: data.totp.qr_code,
       segredo: data.totp.secret,
     };
