@@ -48,6 +48,25 @@ export class AutenticacaoService {
   }
 
   /**
+   * Cliente com a sessão do usuário **de fato carregada**.
+   *
+   * O detalhe que custou caro: passar o token em `global.headers.Authorization`
+   * autentica as chamadas ao PostgREST, mas **não** a camada de auth. Métodos
+   * como `mfa.enroll` e `mfa.verify` leem a sessão do estado interno do cliente,
+   * que fica vazio — e falham com uma mensagem genérica que não aponta para a
+   * causa. `setSession` é o que realmente popula esse estado.
+   */
+  async clienteComSessao(accessToken: string, refreshToken: string) {
+    const supabase = this.clienteAnonimo();
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) return null;
+    return supabase;
+  }
+
+  /**
    * Opções do cookie de sessão.
    *
    * `httpOnly` para que script injetado não leia o token; `sameSite: strict`
@@ -139,17 +158,13 @@ export class AutenticacaoController {
     @Res({ passthrough: true }) resposta: Response,
   ): Promise<{ ok: true }> {
     const entrada = EntradaMfa.parse(corpo);
-    const token = (requisicao.cookies as Record<string, string> | undefined)?.[NOME_COOKIE_SESSAO];
+    const cookies = requisicao.cookies as Record<string, string> | undefined;
+    const token = cookies?.[NOME_COOKIE_SESSAO];
+    const renovacao = cookies?.[NOME_COOKIE_RENOVACAO] ?? '';
     if (!token) throw new UnauthorizedException('Sessão não encontrada. Entre novamente.');
 
-    const supabase = createClient(
-      this.configuracao.SUPABASE_URL,
-      this.configuracao.SUPABASE_CHAVE_ANONIMA,
-      {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      },
-    );
+    const supabase = await this.servico.clienteComSessao(token, renovacao);
+    if (!supabase) throw new UnauthorizedException('Sessão inválida. Entre novamente.');
 
     const { data, error } = await supabase.auth.mfa.verify({
       factorId: entrada.idFator,
@@ -179,17 +194,13 @@ export class AutenticacaoController {
   async inscreverMfa(
     @Req() requisicao: Request,
   ): Promise<{ idFator: string; qrCode: string; segredo: string }> {
-    const token = (requisicao.cookies as Record<string, string> | undefined)?.[NOME_COOKIE_SESSAO];
+    const cookies = requisicao.cookies as Record<string, string> | undefined;
+    const token = cookies?.[NOME_COOKIE_SESSAO];
+    const renovacao = cookies?.[NOME_COOKIE_RENOVACAO] ?? '';
     if (!token) throw new UnauthorizedException('Sessão não encontrada.');
 
-    const supabase = createClient(
-      this.configuracao.SUPABASE_URL,
-      this.configuracao.SUPABASE_CHAVE_ANONIMA,
-      {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      },
-    );
+    const supabase = await this.servico.clienteComSessao(token, renovacao);
+    if (!supabase) throw new UnauthorizedException('Sessão inválida. Entre novamente.');
 
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
     if (error || !data) {
