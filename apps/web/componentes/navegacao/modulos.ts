@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Map,
   Megaphone,
+  Sparkles,
   Target,
   TrendingUp,
   UserSquare2,
@@ -111,6 +112,7 @@ export const GRUPOS: GrupoModulos[] = [
       { href: '/cadastros/usuarios', rotulo: 'Equipe', permissao: 'usuarios.ler' },
       { href: '/cadastros/financeiro', rotulo: 'Financeiro', permissao: 'financeiro.ler' },
       { href: '/cadastros/artes', rotulo: 'Artes', permissao: 'artes.ler' },
+      { href: '/configuracoes/ia', rotulo: 'Uso de IA', permissao: 'ia.usar' },
     ],
   },
   {
@@ -140,6 +142,7 @@ export const ICONE_POR_ROTA: Record<string, LucideIcon> = {
   '/cadastros/usuarios': Users,
   '/cadastros/financeiro': Wallet,
   '/cadastros/artes': Image,
+  '/configuracoes/ia': Sparkles,
   '/relatorios': FileBarChart,
 };
 

@@ -11,6 +11,7 @@ import {
   type PaginaDe,
 } from '@jeleitoral/tipos';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
+import { RevisarComIa } from '@/componentes/ia/RevisarComIa';
 import { ErroDaApi, api } from '@/lib/api';
 import { useListagem } from '@/lib/useListagem';
 import { useSessao } from '@/lib/useSessao';
@@ -207,6 +208,12 @@ export default function PaginaAgenda(): JSX.Element {
                 onChange={(e) => definirRoteiro(e.target.value)}
               />
             </Campo>
+            <RevisarComIa
+              idCampanha={idCampanha}
+              texto={roteiro}
+              aoAplicar={definirRoteiro}
+              className="mt-2"
+            />
           </div>
 
           {erroFormulario ? (

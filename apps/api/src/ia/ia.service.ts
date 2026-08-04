@@ -186,6 +186,77 @@ export class IaService {
     };
   }
 
+  /**
+   * Consumo do mês corrente, por funcionalidade e por provedor.
+   *
+   * Devolve também o teto aplicado — um limite que corta a chamada sem que
+   * ninguém veja quanto já se gastou produz chamado de suporte, não economia.
+   */
+  async resumoDeUso(claims: ClaimsUsuario): Promise<{
+    provedorAtivo: string;
+    modeloPadrao: string;
+    disponivel: boolean;
+    tokensConsumidos: number;
+    tetoMensal: number;
+    custoTotal: number;
+    porFuncionalidade: Array<{
+      funcionalidade: string;
+      provedor: string;
+      chamadas: number;
+      falhas: number;
+      tokens: number;
+      custo: number;
+    }>;
+  }> {
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query<{
+        funcionalidade: string;
+        provedor: string;
+        chamadas: string;
+        falhas: string;
+        tokens: string;
+        custo: string;
+      }>(
+        `select u.funcionalidade, u.provedor,
+                count(*)::bigint as chamadas,
+                count(*) filter (where not u.sucesso)::bigint as falhas,
+                sum(u.tokens_entrada + u.tokens_saida)::bigint as tokens,
+                sum(u.custo_estimado)::numeric as custo
+           from public.usos_ia u
+          where u.criado_em >= date_trunc('month', now())
+          group by u.funcionalidade, u.provedor
+          order by custo desc`,
+      );
+
+      const { rows: teto } = await conexao.query<{ limite: number | null }>(
+        `select coalesce(p.limite_creditos_ia, o.limite_creditos_ia) as limite
+           from public.organizacoes o
+           left join public.planos p on p.id = o.id_plano
+          where o.id = $1`,
+        [claims.idOrganizacao],
+      );
+
+      const porFuncionalidade = rows.map((linha) => ({
+        funcionalidade: linha.funcionalidade,
+        provedor: linha.provedor,
+        chamadas: Number(linha.chamadas),
+        falhas: Number(linha.falhas),
+        tokens: Number(linha.tokens),
+        custo: Number(linha.custo),
+      }));
+
+      return {
+        provedorAtivo: this.provedor.nome,
+        modeloPadrao: this.provedor.modeloPadrao,
+        disponivel: this.provedor.disponivel(),
+        tokensConsumidos: porFuncionalidade.reduce((soma, l) => soma + l.tokens, 0),
+        tetoMensal: teto[0]?.limite ?? this.limitePadrao,
+        custoTotal: porFuncionalidade.reduce((soma, l) => soma + l.custo, 0),
+        porFuncionalidade,
+      };
+    });
+  }
+
   // --- Orquestração ----------------------------------------------------------
 
   /**

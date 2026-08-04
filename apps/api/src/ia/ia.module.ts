@@ -1,4 +1,4 @@
-import { Body, Controller, Module, Post } from '@nestjs/common';
+import { Body, Controller, Get, Module, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { ClaimsUsuario, Uuid } from '@jeleitoral/tipos';
@@ -51,6 +51,21 @@ class IaController {
   @ExigePermissao('ia.usar')
   async consultar(@Claims() claims: ClaimsUsuario, @Body() corpo: unknown): Promise<unknown> {
     return this.ia.interpretarConsulta(claims, EntradaConsulta.parse(corpo));
+  }
+
+  /**
+   * Consumo e custo da IA no mes corrente.
+   *
+   * Existe porque o limite de creditos passou a valer de verdade: um teto que
+   * corta a chamada sem que ninguem consiga ver quanto ja se gastou produz
+   * chamado de suporte, nao economia. O `sucesso = false` aparece separado —
+   * chamada que falhou tambem consome, e some do relatorio quem so soma o que
+   * deu certo.
+   */
+  @Get('uso')
+  @ExigePermissao('ia.usar')
+  async uso(@Claims() claims: ClaimsUsuario): Promise<unknown> {
+    return this.ia.resumoDeUso(claims);
   }
 }
 
