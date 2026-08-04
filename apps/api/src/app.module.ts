@@ -13,6 +13,7 @@ import { CampanhasController } from './campanhas/campanhas.controller.js';
 import { CampoModule } from './campo/campo.module.js';
 import { CandidatosModule } from './candidatos/candidatos.module.js';
 import { MetasModule } from './metas/metas.module.js';
+import { MobilizacaoModule } from './mobilizacao/mobilizacao.module.js';
 import { FiltroExcecoes } from './comum/filtroExcecoes.js';
 import { InterceptorCorrelacao } from './comum/interceptorCorrelacao.js';
 import { FinanceiroModule } from './financeiro/financeiro.module.js';
@@ -41,6 +42,7 @@ import { SaudeController } from './saude/saude.controller.js';
     PainelModule,
     CandidatosModule,
     MetasModule,
+    MobilizacaoModule,
     TerritorioModule,
     FinanceiroModule,
     ProvedorModule,

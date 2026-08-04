@@ -10,10 +10,12 @@ import {
   Map,
   Moon,
   Sun,
+  Megaphone,
   Target,
   TrendingUp,
   UserSquare2,
   Users,
+  Home,
   Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -44,6 +46,13 @@ const ITENS = [
     permissao: 'campanhas.gerenciar',
   },
   { href: '/cadastros/usuarios', rotulo: 'Equipe', icone: Users, permissao: 'usuarios.ler' },
+  {
+    href: '/mobilizacao/ativistas',
+    rotulo: 'Militância',
+    icone: Megaphone,
+    permissao: 'mobilizacao.ler',
+  },
+  { href: '/mobilizacao/comites', rotulo: 'Comitês', icone: Home, permissao: 'mobilizacao.ler' },
   {
     href: '/cadastros/candidatos',
     rotulo: 'Candidatos',

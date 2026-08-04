@@ -357,3 +357,41 @@ export const RotuloAcaoAuditoria: Record<AcaoAuditoria, string> = {
 
 export const FormatoExportacao = z.enum(['PDF', 'XLSX', 'CSV']);
 export type FormatoExportacao = z.infer<typeof FormatoExportacao>;
+
+// --- Mobilização ------------------------------------------------------------
+
+/**
+ * Militância sem acesso ao sistema. Espelha `public.papel_ativista` (0020).
+ *
+ * A distinção entre MULTIPLICADOR e CABO_ELEITORAL não é cosmética: o
+ * multiplicador é quem recebe capacitação e repassa a mensagem, e é o público
+ * das atividades do tipo CAPACITACAO.
+ */
+export const PapelAtivista = z.enum([
+  'MULTIPLICADOR',
+  'LIDERANCA',
+  'CABO_ELEITORAL',
+  'VOLUNTARIO',
+  'APOIADOR',
+]);
+export type PapelAtivista = z.infer<typeof PapelAtivista>;
+
+export const RotuloPapelAtivista: Record<PapelAtivista, string> = {
+  MULTIPLICADOR: 'Multiplicador',
+  LIDERANCA: 'Liderança',
+  CABO_ELEITORAL: 'Cabo eleitoral',
+  VOLUNTARIO: 'Voluntário',
+  APOIADOR: 'Apoiador',
+};
+
+/** Espelha `public.tipo_comite` (0020). */
+export const TipoComite = z.enum(['CENTRAL', 'REGIONAL', 'BAIRRO', 'TEMATICO', 'MOVEL']);
+export type TipoComite = z.infer<typeof TipoComite>;
+
+export const RotuloTipoComite: Record<TipoComite, string> = {
+  CENTRAL: 'Central',
+  REGIONAL: 'Regional',
+  BAIRRO: 'De bairro',
+  TEMATICO: 'Temático',
+  MOVEL: 'Móvel',
+};
