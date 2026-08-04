@@ -16,7 +16,8 @@
     "verificar:ambiente": "node scripts/verificarAmbiente.mjs",
     "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts",
     "tse:sincronizar": "tsx scripts/sincronizarTse.ts",
-    "usuario:senha": "node scripts/redefinirSenha.mjs"
+    "usuario:senha": "node scripts/redefinirSenha.mjs",
+    "provar:revogacao": "tsx scripts/provarRevogacao.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

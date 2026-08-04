@@ -255,6 +255,55 @@ export class AutenticacaoController {
     return inscricao;
   }
 
+
+  /**
+   * Renova a sessão a partir do cookie de renovação.
+   *
+   * Esta rota **não existia**, e a ausência era um defeito de peso: o cookie de
+   * renovação era gravado com trinta dias de validade e nunca usado. Na prática
+   * o entrevistador em campo era jogado para o login uma hora depois de entrar
+   * — exatamente o que o comentário em `gravarCookies` dizia que não podia
+   * acontecer.
+   *
+   * É também a metade que faz a revogação funcionar: renovar reexecuta o hook
+   * de token do Supabase, que remonta os claims a partir do banco. Permissão
+   * tirada há dez segundos já não vem no token novo.
+   */
+  @Post('renovar')
+  @Publica()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async renovar(
+    @Req() requisicao: Request,
+    @Res({ passthrough: true }) resposta: Response,
+  ): Promise<{ renovada: true }> {
+    const cookies = requisicao.cookies as Record<string, string> | undefined;
+    const tokenRenovacao = cookies?.[NOME_COOKIE_RENOVACAO];
+
+    if (!tokenRenovacao) {
+      throw new UnauthorizedException('Sessão expirada. Entre novamente.');
+    }
+
+    const supabase = this.servico.clienteAnonimo();
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: tokenRenovacao,
+    });
+
+    if (error || !data.session) {
+      /*
+       * Limpa os cookies antes de recusar.
+       *
+       * Um token de renovação já gasto ou revogado no cookie faria toda
+       * requisição seguinte tentar renovar e falhar de novo, prendendo a pessoa
+       * num laço sem nunca chegar à tela de login.
+       */
+      this.limparCookies(resposta);
+      throw new UnauthorizedException('Sessão expirada. Entre novamente.');
+    }
+
+    this.gravarCookies(resposta, data.session);
+    return { renovada: true };
+  }
+
   @Post('sair')
   @HttpCode(HttpStatus.NO_CONTENT)
   sair(@Res({ passthrough: true }) resposta: Response): void {

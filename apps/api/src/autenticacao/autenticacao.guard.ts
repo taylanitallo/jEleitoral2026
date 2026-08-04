@@ -12,6 +12,7 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { Request } from 'express';
 import { ClaimsUsuario, type EscopoPermissao } from '@jeleitoral/tipos';
 import { carregarConfiguracao } from '../comum/configuracao.js';
+import { RevogacaoService } from './revogacao.service.js';
 
 /** Marca uma rota como pública (login, /saude). */
 export const ROTA_PUBLICA = 'rota_publica';
@@ -64,7 +65,10 @@ export class AutenticacaoGuard implements CanActivate {
   private readonly chaves: JWTVerifyGetKey;
   private readonly emDesenvolvimento: boolean;
 
-  constructor(private readonly reflector: Reflector) {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly revogacao: RevogacaoService,
+  ) {
     const configuracao = carregarConfiguracao();
     // Os tokens de usuário do Supabase são assinados em ES256 e verificados
     // pelo JWKS público do projeto. O `jose` busca as chaves sob demanda e
@@ -89,8 +93,29 @@ export class AutenticacaoGuard implements CanActivate {
       throw new UnauthorizedException('Sessão não encontrada. Entre novamente.');
     }
 
-    const claims = await this.verificarToken(token);
+    const { claims, iat } = await this.verificarToken(token);
     requisicao.claims = claims;
+
+    /*
+     * O portão que faltava.
+     *
+     * Sem ele, tirar uma permissão de alguém não fazia nada até o token ser
+     * reemitido — e como não havia rota de renovação, "reemitido" queria dizer
+     * "no próximo login". Um coordenador desligado numa sexta continuava
+     * enxergando a campanha inteira.
+     *
+     * O código do erro é o que faz a diferença para quem está do outro lado:
+     * `SESSAO_DESATUALIZADA` diz ao cliente para renovar em silêncio e repetir
+     * a requisição, enquanto `UnauthorizedException` genérica o mandaria para a
+     * tela de login — que é a experiência errada para quem só teve o escopo
+     * ajustado.
+     */
+    if (await this.revogacao.tokenDesatualizado(claims.sub, iat)) {
+      throw new UnauthorizedException({
+        codigo: 'SESSAO_DESATUALIZADA',
+        mensagem: 'Suas permissões mudaram. Renovando a sessão…',
+      });
+    }
 
     const dispensaMfa = this.reflector.getAllAndOverride<boolean>(DISPENSA_MFA, [
       contexto.getHandler(),
@@ -138,13 +163,15 @@ export class AutenticacaoGuard implements CanActivate {
     return null;
   }
 
-  private async verificarToken(token: string): Promise<ClaimsUsuario> {
+  private async verificarToken(
+    token: string,
+  ): Promise<{ claims: ClaimsUsuario; iat: number | undefined }> {
     try {
       const { payload } = await jwtVerify(token, this.chaves);
       // Zod aqui não é preciosismo: um token válido mas com claim faltando
       // (hook do Supabase mal configurado) produziria um `idOrganizacao`
       // indefinido, e toda política RLS negaria sem explicação clara.
-      return ClaimsUsuario.parse({
+      const claims = ClaimsUsuario.parse({
         sub: payload.sub,
         email: payload['email'],
         idOrganizacao: payload['id_organizacao'],
@@ -156,6 +183,7 @@ export class AutenticacaoGuard implements CanActivate {
         permissoes: payload['permissoes'] ?? {},
         mfaVerificado: payload['aal'] === 'aal2' || payload['mfa_verificado'] === true,
       });
+      return { claims, iat: payload.iat };
     } catch (erro) {
       this.registrador.debug(`Token recusado: ${String(erro)}`);
       throw new UnauthorizedException('Sessão inválida ou expirada. Entre novamente.');

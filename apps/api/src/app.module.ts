@@ -8,6 +8,7 @@ import {
   AutenticacaoService,
 } from './autenticacao/autenticacao.controller.js';
 import { AutenticacaoGuard } from './autenticacao/autenticacao.guard.js';
+import { RevogacaoService } from './autenticacao/revogacao.service.js';
 import { AuditoriaService } from './auditoria/auditoria.service.js';
 import { BancoService } from './banco/banco.service.js';
 import { CampanhasController } from './campanhas/campanhas.controller.js';
@@ -63,6 +64,7 @@ import { SaudeController } from './saude/saude.controller.js';
     BancoService,
     AuditoriaService,
     AutenticacaoService,
+    RevogacaoService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AutenticacaoGuard },
     { provide: APP_INTERCEPTOR, useClass: InterceptorCorrelacao },
