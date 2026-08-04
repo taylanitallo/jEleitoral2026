@@ -58,7 +58,10 @@ jobs:
     # verificar é o comportamento do PostgreSQL, não o do nosso código.
     services:
       postgres:
-        image: postgres:15
+        # Mesma major de produção (Supabase). Testar migrations num PostgreSQL
+        # de versão diferente da que vai executá-las é um teste que passa e não
+        # prova nada — sintaxe aceita numa major pode não existir na outra.
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: jeleitoral_teste
@@ -95,6 +98,41 @@ jobs:
         run: pnpm --filter @jeleitoral/api test:rls
       - name: Isolamento cruzado entre organizações e campanhas
         run: pnpm --filter @jeleitoral/api test:isolamento
+
+  migrar-producao:
+    name: Aplicar migrations em produção
+    runs-on: ubuntu-latest
+    # Só depois de o schema ter passado por RLS e isolamento contra um banco
+    # descartável. Aplicar antes disso seria descobrir o defeito com dados de
+    # campo dentro.
+    needs: [qualidade, banco]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # O ambiente permite exigir aprovação manual nas configurações do
+    # repositório, e é onde o segredo de conexão fica isolado do resto do CI.
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Sem o segredo configurado, o passo AVISA e passa — não falha. Falhar
+      # aqui bloquearia todo push para main num repositório que ainda não
+      # terminou de configurar o deploy, e o efeito prático seria alguém
+      # desativar o job inteiro. Avisar mantém o caminho visível.
+      - name: Aplicar migrations
+        env:
+          BANCO_URL: ${{ secrets.BANCO_URL_PRODUCAO }}
+        run: |
+          if [ -z "$BANCO_URL" ]; then
+            echo "::warning::BANCO_URL_PRODUCAO não configurado. Migrations NÃO foram aplicadas."
+            exit 0
+          fi
+          pnpm --filter @jeleitoral/api banco:aplicar
 
   construir:
     name: Build
