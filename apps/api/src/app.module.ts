@@ -21,6 +21,7 @@ import { FinanceiroModule } from './financeiro/financeiro.module.js';
 import { IaModule } from './ia/ia.module.js';
 import { IntegracoesModule } from './integracoes/integracoes.module.js';
 import { PainelModule } from './painel/painel.module.js';
+import { PlanejamentoModule } from './planejamento/planejamento.module.js';
 import { ProjecaoModule } from './projecao/projecao.module.js';
 import { RelatoriosModule } from './relatorios/relatorios.module.js';
 import { ProvedorModule } from './provedor/provedor.module.js';
@@ -45,6 +46,7 @@ import { SaudeController } from './saude/saude.controller.js';
     MetasModule,
     MobilizacaoModule,
     AgendaModule,
+    PlanejamentoModule,
     TerritorioModule,
     FinanceiroModule,
     ProvedorModule,

@@ -465,3 +465,32 @@ export const RotuloSituacaoParticipante: Record<SituacaoParticipante, string> = 
   AUSENTE: 'Ausente',
   JUSTIFICADO: 'Falta justificada',
 };
+
+// --- Planejamento -----------------------------------------------------------
+
+/**
+ * Espelha `public.natureza_area` (0022).
+ *
+ * TERRITORIAL recorta o mapa (Zona Norte, Rural); TEMATICA recorta a pauta
+ * (Saúde, Juventude); SEGMENTO recorta o público (Mulheres, Evangélicos). São
+ * a mesma estrutura — coordenador, ações, atividades, diagnóstico — e por isso
+ * dividem a tabela. Na tela viram listas separadas, e o usuário nunca vê a
+ * sobreposição.
+ */
+export const NaturezaArea = z.enum(['TERRITORIAL', 'TEMATICA', 'SEGMENTO']);
+export type NaturezaArea = z.infer<typeof NaturezaArea>;
+
+export const RotuloNaturezaArea: Record<NaturezaArea, string> = {
+  TERRITORIAL: 'Territorial',
+  TEMATICA: 'Temática',
+  SEGMENTO: 'Segmento',
+};
+
+export const Prioridade = z.enum(['ALTA', 'MEDIA', 'BAIXA']);
+export type Prioridade = z.infer<typeof Prioridade>;
+
+export const RotuloPrioridade: Record<Prioridade, string> = {
+  ALTA: 'Alta',
+  MEDIA: 'Média',
+  BAIXA: 'Baixa',
+};

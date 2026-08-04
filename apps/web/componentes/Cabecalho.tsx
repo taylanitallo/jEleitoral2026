@@ -10,6 +10,7 @@ import {
   LogOut,
   Map,
   Moon,
+  Compass,
   Sun,
   Megaphone,
   Target,
@@ -47,6 +48,12 @@ const ITENS = [
     permissao: 'campanhas.gerenciar',
   },
   { href: '/cadastros/usuarios', rotulo: 'Equipe', icone: Users, permissao: 'usuarios.ler' },
+  {
+    href: '/planejamento/areas',
+    rotulo: 'Áreas',
+    icone: Compass,
+    permissao: 'planejamento.ler',
+  },
   { href: '/agenda', rotulo: 'Agenda', icone: CalendarDays, permissao: 'agenda.ler' },
   {
     href: '/mobilizacao/ativistas',
