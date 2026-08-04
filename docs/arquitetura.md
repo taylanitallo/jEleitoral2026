@@ -164,9 +164,17 @@ Ordenadas por quanto bloqueiam o uso real.
 2. ~~**`app.segredo_hmac`**~~ — **já estava configurado** em homologação; a
    pendência era um registro desatualizado. Continua valendo o alerta: mudá-la
    depois de haver documento cifrado gravado quebra todos os índices de busca.
-3. **Autenticação não implementada.** Existe o guard que valida o JWT, mas não há
-   tela de login, fluxo de convite, nem MFA configurado. As telas atuais usam
-   identificadores fixos no código.
+3. **Autenticação: falta só o convite.** O registro anterior ("não implementada")
+   estava errado e custou uma reavaliação de prazo. O que **existe e funciona**:
+   tela de login, MFA/TOTP com inscrição pelo QR no primeiro acesso, cookies
+   `httpOnly` + `SameSite=Strict`, middleware que protege as rotas preservando o
+   destino, e `GET /autenticacao/sessao` alimentando `useSessao`.
+
+   O que falta de verdade é **não haver caminho para criar usuário pela
+   aplicação**: não existe controller de `usuarios` nem fluxo de convite, e a
+   única porta é `scripts/semearOrganizacao.mjs` com a chave de serviço. Uma
+   campanha com 20 entrevistadores precisa que o coordenador cadastre gente
+   sozinho — hoje isso exige alguém com acesso ao terminal e à chave de serviço.
 4. **O aplicativo de campo não abre sem rede.** A fila offline (`filaOffline.ts`)
    está completa e testada, mas **não existe service worker nem manifest** — não
    há sequer `apps/web/public/`. O app shell vem do servidor a cada visita, então
