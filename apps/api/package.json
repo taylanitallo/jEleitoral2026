@@ -13,6 +13,7 @@
     "test:rls": "vitest run testes/coberturaRls.spec.ts",
     "test:isolamento": "vitest run testes/isolamento.spec.ts",
     "verificar:integracoes": "tsx scripts/verificarIntegracoes.ts",
+    "verificar:ambiente": "node scripts/verificarAmbiente.mjs",
     "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts",
     "usuario:senha": "node scripts/redefinirSenha.mjs"
   },

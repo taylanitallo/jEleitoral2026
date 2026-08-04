@@ -51,7 +51,31 @@ sobe e nega tudo:
 1. **Custom Access Token Hook.** É ele que coloca `id_organizacao`, `campanhas`,
    `equipes`, `territorios` e `permissoes` no JWT. Sem esses claims, toda
    política RLS nega — que é o padrão seguro, mas o sistema não funciona.
-   Configure em Authentication → Hooks apontando para a função de token.
+
+   Já está declarado no `config.toml`; o que faltava era aplicá-lo ao projeto
+   remoto. **`config.toml` não viaja sozinho** — `db push` leva migration, não
+   configuração:
+
+   ```bash
+   cd infra && supabase config push --yes
+   ```
+
+   Duas armadilhas deste comando, ambas descobertas na prática:
+
+   - **`--workdir` não funciona aqui.** Ao contrário de `db push`, o
+     `config push` procura `supabase/config.toml` a partir do diretório atual.
+     Rode de dentro de `infra/`.
+   - **Ele envia o arquivo inteiro, para o projeto que estiver vinculado.** Por
+     isso `site_url` e `additional_redirect_urls` vêm de variável de ambiente
+     (`SUPABASE_URL_SITE`, `SUPABASE_URL_REDIRECIONAMENTO`): um valor fixo faria
+     todo link de convite e de recuperação de senha de produção apontar para o
+     `127.0.0.1` de quem rodou o comando.
+
+   E um campo que **não** é o que o nome diz: `[auth.email] enable_signup` é
+   traduzido pelo CLI para `external_email_enabled`, o interruptor do provedor
+   de e-mail inteiro. Colocá-lo em `false` derruba o login com e-mail e senha
+   ("Email logins are disabled"). Quem barra autocadastro é o `enable_signup` da
+   seção `[auth]`.
 2. **`app.segredo_hmac`.** A função `public.hmac_indice` depende dela para gerar
    o índice de busca sobre CPF e título criptografados.
    ```sql
@@ -64,10 +88,18 @@ sobe e nega tudo:
 ### Verificar antes de confiar
 
 ```bash
-pnpm --filter @jeleitoral/api banco:aplicar   # aplica em transação única
-pnpm --filter @jeleitoral/api test:rls        # cobertura de RLS
-pnpm --filter @jeleitoral/api test:isolamento # isolamento cruzado
+pnpm --filter @jeleitoral/api banco:aplicar     # aplica em transação única
+pnpm --filter @jeleitoral/api verificar:ambiente # hook, segredo HMAC e claims
+pnpm --filter @jeleitoral/api test:rls          # cobertura de RLS
+pnpm --filter @jeleitoral/api test:isolamento   # isolamento cruzado
 ```
+
+`verificar:ambiente` existe porque as duas configurações acima falham em
+silêncio: o sistema sobe, o login funciona, e só a primeira consulta a dado de
+campo volta vazia — o sintoma parece "banco sem dados". Com
+`EMAIL_VERIFICACAO` e `SENHA_VERIFICACAO` definidos, ele emite um token real e
+confere os claims, que é a única prova de que o hook está registrado no serviço
+de Auth e não apenas declarado no `config.toml`.
 
 Os dois testes exigem `BANCO_URL` apontando para um PostgreSQL **descartável** —
 eles criam e apagam organizações. Nunca aponte para produção.
@@ -113,15 +145,20 @@ lê.
 
 ---
 
-## 3.1 Estado em 01/08/2026
+## 3.1 Estado em 04/08/2026
 
-- Os dois projetos existem e **as 13 migrations foram aplicadas nos dois**.
+- Os dois projetos existem, ambos `ACTIVE_HEALTHY` em sa-east-1, com **16
+  migrations aplicadas**.
 - Em homologação, `test:rls` (7 testes) e `test:isolamento` (14 testes) passam
   contra o banco real.
 - A linha de base de produção foi aplicada manualmente **uma única vez**, para
   bootstrap. Daqui em diante, produção só recebe migration pelo CI.
-- Falta configurar: Custom Access Token Hook e `app.segredo_hmac` nos dois
-  projetos (seção 1). Sem isso a API sobe e nega tudo.
+- **Homologação está configurada e verificada**: `verificar:ambiente` passa
+  7/7, incluindo a emissão de um token real cujos claims chegam preenchidos.
+  O `app.segredo_hmac` já estava definido; o que faltava era o `config push`.
+- **Produção ainda não recebeu o `config push`** — lá o hook continua inativo e
+  toda política nega. Antes de rodar, definir `SUPABASE_URL_SITE` e
+  `SUPABASE_URL_REDIRECIONAMENTO` com o domínio real, e não com `127.0.0.1`.
 
 ## 4. Ordem do primeiro deploy
 

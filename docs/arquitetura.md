@@ -3,7 +3,7 @@
 Documento vivo. Registra as decisões tomadas, o motivo de cada uma e o estado
 real da implementação — inclusive o que ainda não existe.
 
-Última atualização: **31/07/2026**.
+Última atualização: **04/08/2026**.
 
 ---
 
@@ -11,7 +11,7 @@ real da implementação — inclusive o que ainda não existe.
 
 | #   | Decisão                      | Escolha                                           | Consequência aceita                                                 |
 | --- | ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | Escopo × prazo               | 14 fases na ordem original                        | O sistema **não** estará em campo no pleito de 04/10/2026           |
+| 1   | ~~Escopo × prazo~~ **revisto em 04/08/2026** | Ordem por "o que bloqueia a equipe ir à rua"      | Alvo: campo operando até o fim de agosto, para o pleito de 04/10/2026 |
 | 2   | Candidatos 2026              | CKAN CSV primário, DivulgaCandContas complementar | Menos frescor durante a janela de registro, muito mais estabilidade |
 | 3   | Volume de ETL                | Sob demanda por UF das campanhas ativas           | Onboarding de nova UF exige uma carga incremental                   |
 | 4   | Inegociável no 1º entregável | Offline-first no formulário de campo              | Custo maior na Fase 6, retrofit evitado                             |
@@ -158,41 +158,48 @@ Ordenadas por quanto bloqueiam o uso real.
 
 ### Bloqueiam a subida
 
-1. **Custom Access Token Hook do Supabase** — precisa ser configurado para
-   preencher `id_organizacao`, `campanhas`, `equipes`, `territorios` e
-   `permissoes` no JWT. Sem ele, toda política nega tudo: o padrão seguro, mas o
-   sistema não funciona.
-2. **`app.segredo_hmac`** — `public.hmac_indice` depende dessa configuração no
-   banco. Definir por ambiente **antes** da primeira gravação de documento
-   cifrado; mudá-la depois quebra todos os índices de busca já gravados.
+1. ~~**Custom Access Token Hook do Supabase**~~ — **resolvido em homologação
+   (04/08/2026)** por `supabase config push`. `verificar:ambiente` emite um token
+   real e confirma os claims. **Produção ainda não recebeu o push.**
+2. ~~**`app.segredo_hmac`**~~ — **já estava configurado** em homologação; a
+   pendência era um registro desatualizado. Continua valendo o alerta: mudá-la
+   depois de haver documento cifrado gravado quebra todos os índices de busca.
 3. **Autenticação não implementada.** Existe o guard que valida o JWT, mas não há
    tela de login, fluxo de convite, nem MFA configurado. As telas atuais usam
    identificadores fixos no código.
+4. **O aplicativo de campo não abre sem rede.** A fila offline (`filaOffline.ts`)
+   está completa e testada, mas **não existe service worker nem manifest** — não
+   há sequer `apps/web/public/`. O app shell vem do servidor a cada visita, então
+   o entrevistador que chega na zona rural sem a aba já aberta não consegue abrir
+   o sistema, e a fila fica inacessível. Os dados de apoio da entrevista (cargos,
+   domicílio, versão do consentimento) também estão fixos no código, com UUIDs de
+   demonstração. **Motor pronto, carroceria ausente** — item bloqueante do
+   caminho de campo, não melhoria.
 
 ### Prometidas no escopo e ainda ausentes
 
-4. **Revogação de sessão ao alterar perfil** — sem ela, mudança de permissão só
+5. **Revogação de sessão ao alterar perfil** — sem ela, mudança de permissão só
    vale no próximo token. Ver seção 2.
-5. **Fila BullMQ** — exportações grandes são registradas como `PENDENTE` e nunca
+6. **Fila BullMQ** — exportações grandes são registradas como `PENDENTE` e nunca
    processadas. Falta o worker e o Redis na Railway.
-6. **Realtime por tenant** — canais do Supabase Realtime não configurados; o
+7. **Realtime por tenant** — canais do Supabase Realtime não configurados; o
    painel não atualiza sozinho.
-7. **Gráficos do painel** — Recharts não integrado; há barra empilhada em CSS,
+8. **Gráficos do painel** — Recharts não integrado; há barra empilhada em CSS,
    mas não a evolução temporal, o mapa de calor nem o funil.
-8. **Telas de administração** — território, candidatos, financeiro, artes,
+9. **Telas de administração** — território, candidatos, financeiro, artes,
    metas, equipes, perfis e backoffice existem só como API.
-9. **Notificação por e-mail** — na concessão de acesso de suporte e na conclusão
+10. **Notificação por e-mail** — na concessão de acesso de suporte e na conclusão
    de exportação assíncrona. Depende de serviço de envio inexistente.
-10. **CNEFE** — conector opcional de endereços do Censo 2022, nunca iniciado.
+11. **CNEFE** — conector opcional de endereços do Censo 2022, nunca iniciado.
 
 ### Riscos conhecidos
 
-11. **Parser da apuração ao vivo não validado.** O layout de 2026 só é publicado
+12. **Parser da apuração ao vivo não validado.** O layout de 2026 só é publicado
     às vésperas do pleito. `analisarBoletim` está isolada para ser a única peça
     a mudar, mas precisa ser confrontada com o arquivo real antes de 04/10.
-12. **E2E nunca executado.** As specs do Playwright existem e o `webServer` está
+13. **E2E nunca executado.** As specs do Playwright existem e o `webServer` está
     configurado; falta rodar `pnpm --filter @jeleitoral/web e2e:instalar` e
     depois `e2e`. Spec escrita não é spec passando.
-13. **Migrations aplicadas só uma vez.** O CI ainda não roda `db push` — a
+14. **Migrations aplicadas só uma vez.** O CI ainda não roda `db push` — a
     linha de base de produção foi aplicada à mão, o que o próprio runbook
     desaconselha para as próximas.
