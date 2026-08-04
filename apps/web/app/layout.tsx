@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ProvedorTema, SCRIPT_TEMA_INICIAL } from '@jeleitoral/ui';
-import { Cabecalho } from '@/componentes/Cabecalho';
+import { Estrutura } from '@/componentes/navegacao/Estrutura';
 import { RegistrarServiceWorker } from '@/componentes/RegistrarServiceWorker';
 import './globals.css';
 
@@ -51,8 +51,7 @@ export default function LayoutRaiz({ children }: { children: React.ReactNode }):
       <body className="min-h-dvh antialiased">
         <ProvedorTema>
           <RegistrarServiceWorker />
-          <Cabecalho />
-          {children}
+          <Estrutura>{children}</Estrutura>
         </ProvedorTema>
       </body>
     </html>
