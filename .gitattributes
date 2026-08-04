@@ -1,0 +1,26 @@
+# Fim de linha, normalizado.
+#
+# Sem este arquivo, o `core.autocrlf=true` do Windows entrega a árvore de
+# trabalho com CRLF enquanto o `.prettierrc` exige `endOfLine: lf`. O resultado
+# é `pnpm formatar:verificar` acusando 42 arquivos fora do padrão na máquina do
+# desenvolvedor e nenhum no CI — um alarme falso permanente, que ensina a
+# ignorar a verificação de formatação. E quem ignora o alarme falso ignora
+# também o verdadeiro.
+#
+# `eol=lf` força LF na árvore de trabalho, em qualquer sistema.
+* text=auto eol=lf
+
+# Binários: nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+
+# Scripts que o Windows executa precisam de CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf

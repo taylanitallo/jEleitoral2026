@@ -7,6 +7,7 @@ import type {
 } from '@jeleitoral/tipos';
 import { BancoService } from '../banco/banco.service.js';
 import { carregarConfiguracao } from '../comum/configuracao.js';
+import { analisarBoletim } from './analisarBoletim.js';
 import { ClienteHttp } from './clienteHttp.js';
 
 /**
@@ -118,7 +119,7 @@ export class ConectorResultadosAoVivo implements ConectorExterno {
       // dos ciclos.
       const hash = createHash('sha256').update(conteudo).digest('hex');
 
-      const boletins = this.analisarBoletim(conteudo);
+      const boletins = analisarBoletim(conteudo);
       processados = boletins.length;
 
       await this.banco.executarEmTabelasDeReferencia(async (conexao) => {
@@ -160,54 +161,5 @@ export class ConectorResultadosAoVivo implements ConectorExterno {
       iniciadoEm,
       finalizadoEm: new Date(),
     };
-  }
-
-  /**
-   * Converte o arquivo de layout fixo em boletins.
-   *
-   * **Resiliente a arquivo parcial de propósito.** Durante a apuração o arquivo
-   * é reescrito enquanto a gente baixa; uma linha truncada no fim é o normal,
-   * não a exceção. Linhas que não fazem sentido são descartadas em silêncio, e
-   * o ciclo seguinte pega a versão completa. Estourar exceção aqui pararia a
-   * apuração inteira por causa de um byte cortado.
-   *
-   * O formato abaixo é o esperado a partir das instruções de anos anteriores e
-   * **precisa ser confrontado com o arquivo real de 2026** antes do pleito.
-   */
-  private analisarBoletim(conteudo: string): Array<{
-    numeroZona: number;
-    numeroSecao: number;
-    codigoCargo: number;
-    votos: Array<{ numeroUrna: string; votos: number }>;
-  }> {
-    const boletins: Array<{
-      numeroZona: number;
-      numeroSecao: number;
-      codigoCargo: number;
-      votos: Array<{ numeroUrna: string; votos: number }>;
-    }> = [];
-
-    for (const linha of conteudo.split(/\r?\n/)) {
-      if (linha.trim().length === 0) continue;
-      const campos = linha.split(';');
-      // Menos campos que o mínimo = linha truncada pela reescrita em curso.
-      if (campos.length < 5) continue;
-
-      const numeroZona = Number(campos[0]);
-      const numeroSecao = Number(campos[1]);
-      const codigoCargo = Number(campos[2]);
-      if (!numeroZona || !numeroSecao || !codigoCargo) continue;
-
-      const votos: Array<{ numeroUrna: string; votos: number }> = [];
-      for (let i = 3; i + 1 < campos.length; i += 2) {
-        const quantidade = Number(campos[i + 1]);
-        if (!Number.isFinite(quantidade)) continue;
-        votos.push({ numeroUrna: String(campos[i]), votos: quantidade });
-      }
-
-      boletins.push({ numeroZona, numeroSecao, codigoCargo, votos });
-    }
-
-    return boletins;
   }
 }
