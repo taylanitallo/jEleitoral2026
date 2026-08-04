@@ -54,6 +54,12 @@ const ITENS = [
     icone: Compass,
     permissao: 'planejamento.ler',
   },
+  {
+    href: '/planejamento/diagnostico',
+    rotulo: 'Diagnóstico',
+    icone: ClipboardList,
+    permissao: 'diagnostico.ler',
+  },
   { href: '/agenda', rotulo: 'Agenda', icone: CalendarDays, permissao: 'agenda.ler' },
   {
     href: '/mobilizacao/ativistas',

@@ -494,3 +494,75 @@ export const RotuloPrioridade: Record<Prioridade, string> = {
   MEDIA: 'Média',
   BAIXA: 'Baixa',
 };
+
+// --- Diagnóstico local ------------------------------------------------------
+
+export const StatusDiagnostico = z.enum(['EM_COLETA', 'CONSOLIDADO', 'ARQUIVADO']);
+export type StatusDiagnostico = z.infer<typeof StatusDiagnostico>;
+
+export const RotuloStatusDiagnostico: Record<StatusDiagnostico, string> = {
+  EM_COLETA: 'Em coleta',
+  CONSOLIDADO: 'Consolidado',
+  ARQUIVADO: 'Arquivado',
+};
+
+/**
+ * Espelha `public.tema_problema` (0023).
+ *
+ * É enum e não texto livre porque a cadeia diagnóstico → narrativa depende de
+ * CONTAR temas. Com texto livre, "falta de médico", "saúde ruim" e "posto
+ * fechado" viram três temas distintos e o agregado perde sentido.
+ */
+export const TemaProblema = z.enum([
+  'SAUDE',
+  'EDUCACAO',
+  'SEGURANCA',
+  'INFRAESTRUTURA',
+  'MOBILIDADE',
+  'SANEAMENTO',
+  'EMPREGO_RENDA',
+  'ASSISTENCIA_SOCIAL',
+  'CULTURA_ESPORTE',
+  'MEIO_AMBIENTE',
+  'AGRICULTURA',
+  'HABITACAO',
+  'GESTAO_PUBLICA',
+  'OUTRO',
+]);
+export type TemaProblema = z.infer<typeof TemaProblema>;
+
+export const RotuloTemaProblema: Record<TemaProblema, string> = {
+  SAUDE: 'Saúde',
+  EDUCACAO: 'Educação',
+  SEGURANCA: 'Segurança',
+  INFRAESTRUTURA: 'Infraestrutura',
+  MOBILIDADE: 'Mobilidade',
+  SANEAMENTO: 'Saneamento',
+  EMPREGO_RENDA: 'Emprego e renda',
+  ASSISTENCIA_SOCIAL: 'Assistência social',
+  CULTURA_ESPORTE: 'Cultura e esporte',
+  MEIO_AMBIENTE: 'Meio ambiente',
+  AGRICULTURA: 'Agricultura',
+  HABITACAO: 'Habitação',
+  GESTAO_PUBLICA: 'Gestão pública',
+  OUTRO: 'Outro',
+};
+
+export const OrigemProblema = z.enum([
+  'ENTREVISTA',
+  'REUNIAO',
+  'VISITA',
+  'LIDERANCA',
+  'OBSERVACAO',
+  'DADO_PUBLICO',
+]);
+export type OrigemProblema = z.infer<typeof OrigemProblema>;
+
+export const RotuloOrigemProblema: Record<OrigemProblema, string> = {
+  ENTREVISTA: 'Entrevista em campo',
+  REUNIAO: 'Reunião',
+  VISITA: 'Visita',
+  LIDERANCA: 'Liderança local',
+  OBSERVACAO: 'Observação da equipe',
+  DADO_PUBLICO: 'Dado público',
+};
