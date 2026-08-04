@@ -30,8 +30,20 @@ const EsquemaConfiguracao = z.object({
 
   REDIS_URL: z.string().optional(),
 
+  /**
+   * Qual provedor de IA usar. Escolha da INSTALACAO, nao da organizacao: com
+   * um ambiente por cliente, trocar aqui troca todo mundo de uma vez, que e o
+   * que se quer se um provedor falhar ou encarecer no meio da campanha.
+   */
+  IA_PROVEDOR: z.enum(['anthropic', 'gemini']).default('anthropic'),
   ANTHROPIC_API_KEY: z.string().optional(),
-  IA_MODELO_PADRAO: z.string().default('claude-sonnet-5'),
+  GEMINI_API_KEY: z.string().optional(),
+  /**
+   * Vazio deixa o proprio adaptador escolher o modelo dele. Fixar um valor aqui
+   * obrigaria a trocar esta variavel junto com IA_PROVEDOR — o passo que se
+   * esquece.
+   */
+  IA_MODELO_PADRAO: z.string().optional(),
   /**
    * Teto mensal de tokens por organização, quando o plano não define o seu.
    *

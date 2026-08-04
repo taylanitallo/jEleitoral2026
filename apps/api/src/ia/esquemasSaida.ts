@@ -132,3 +132,48 @@ export const InterpretacaoConsulta = z.object({
   confianca: z.number().min(0).max(1),
 });
 export type InterpretacaoConsulta = z.infer<typeof InterpretacaoConsulta>;
+
+// --- Forma neutra ------------------------------------------------------------
+
+/*
+ * Os mesmos três esquemas, agora independentes de fornecedor.
+ *
+ * Os `EsquemaJson*` acima descrevem o dialeto da Anthropic e ficam por
+ * compatibilidade enquanto houver quem os importe; o que os provedores
+ * consomem daqui em diante são estes. Um descritor, dois compiladores — ver
+ * `esquemas/dialetos.ts` e o teste que confere as duas saídas.
+ */
+import { lista, numero, objeto, texto } from './esquemas/neutro.js';
+
+export const EsquemaNeutroDiagnostico = objeto({
+  pontosFortes: lista(texto()),
+  secoesCriticas: lista(
+    objeto({
+      idReferencia: texto(),
+      motivo: texto(),
+      gravidade: texto({ enumeracao: ['ALTA', 'MEDIA', 'BAIXA'] }),
+    }),
+  ),
+  ondeInvestirEsforco: lista(texto()),
+  riscoDeMetaNaoAtingida: objeto({
+    nivel: texto({ enumeracao: ['ALTO', 'MODERADO', 'BAIXO'] }),
+    justificativa: texto(),
+  }),
+});
+
+export const EsquemaNeutroRevisao = objeto({
+  textoRevisado: texto(),
+  alteracoes: lista(objeto({ trecho: texto(), motivo: texto() })),
+});
+
+export const EsquemaNeutroConsulta = objeto(
+  {
+    consulta: texto({ enumeracao: CONSULTAS_PERMITIDAS }),
+    limiarPercentual: numero(),
+    limite: numero({ inteiro: true }),
+    confianca: numero(),
+  },
+  // O modelo devolve nulo quando o parâmetro não se aplica à consulta
+  // escolhida; o Zod já os tem como opcionais.
+  { opcionais: ['limiarPercentual', 'limite'] },
+);
