@@ -18,6 +18,7 @@
  * declarado no `config.toml`:
  *   EMAIL_VERIFICACAO=... SENHA_VERIFICACAO=... pnpm --filter @jeleitoral/api verificar:ambiente
  */
+import { createHmac } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
@@ -98,25 +99,66 @@ async function verificarBanco() {
       permissao[0]?.pode === true ? null : 'Reaplique a migration 0014.',
     );
 
-    // --- Segredo do HMAC -----------------------------------------------------
-    // Não basta a configuração existir: o que interessa é a função produzir
-    // índice. Chamá-la é a prova direta.
-    try {
-      const { rows: hmac } = await cliente.query(
-        `select public.hmac_indice('00000000000') as indice`,
-      );
-      const indice = hmac[0]?.indice;
-      registrar(
-        'app.segredo_hmac configurado (public.hmac_indice responde)',
-        Boolean(indice),
-        indice ? null : 'A função respondeu vazio.',
-      );
-    } catch (erro) {
-      registrar(
-        'app.segredo_hmac configurado (public.hmac_indice responde)',
-        false,
-        `${erro.message} — rode: alter database postgres set app.segredo_hmac = '<SEGREDO_HMAC_INDICE>';`,
-      );
+    // --- Índice de busca sobre documento -------------------------------------
+    //
+    // Não se verifica `app.segredo_hmac` no nível do banco: desde o PostgreSQL
+    // 15, definir parâmetro personalizado com `alter database/role ... set`
+    // exige superusuário, e o Supabase não concede isso ao papel `postgres`.
+    // Tentar retorna `permission denied to set parameter`. O runbook chegou a
+    // pedir esse comando; ele nunca teve como funcionar aqui.
+    //
+    // O desenho real é outro e é o correto: `BancoService.executarComoUsuario`
+    // injeta o segredo por transação com `set_config(..., true)`, a partir da
+    // variável de ambiente da API. O que precisa ser provado, então, é o
+    // acoplamento que de fato pode quebrar — a gravação calcula o HMAC em
+    // TypeScript e a busca calcula no banco. Se as duas contas divergirem, o
+    // cadastro funciona, a busca por CPF não acha nada, e nada no log liga uma
+    // coisa à outra.
+    const segredoDaApi = process.env.SEGREDO_HMAC_INDICE ?? '';
+    if (!segredoDaApi) {
+      registrar('SEGREDO_HMAC_INDICE definido', false, 'Sem ele a API não grava índice de busca.');
+    } else {
+      const documentoComMascara = '123.456.789-09';
+      const esperado = createHmac('sha256', segredoDaApi)
+        .update(documentoComMascara.replace(/\D+/g, ''))
+        .digest('hex');
+
+      await cliente.query('begin');
+      try {
+        await cliente.query('select set_config($1, $2, true)', [
+          'app.segredo_hmac',
+          segredoDaApi,
+        ]);
+        const { rows } = await cliente.query('select public.hmac_indice($1) as indice', [
+          documentoComMascara,
+        ]);
+        registrar(
+          'public.hmac_indice concorda com o cálculo da API',
+          rows[0].indice === esperado,
+          rows[0].indice === esperado
+            ? null
+            : 'Divergem: o entrevistado seria gravado com um índice e procurado com outro.',
+        );
+      } finally {
+        await cliente.query('rollback');
+      }
+
+      // A proteção acrescentada pela 0017: sem o segredo, a função tem de
+      // falhar. Antes ela calculava com chave vazia e devolvia "não encontrado"
+      // em silêncio — um falso negativo que faz o operador cadastrar duplicata.
+      await cliente.query('begin');
+      try {
+        await cliente.query(`select public.hmac_indice('12345678909')`);
+        registrar(
+          'public.hmac_indice recusa calcular sem segredo',
+          false,
+          'Respondeu sem o segredo definido: voltou a calcular com chave vazia.',
+        );
+      } catch {
+        registrar('public.hmac_indice recusa calcular sem segredo', true, null);
+      } finally {
+        await cliente.query('rollback');
+      }
     }
 
     // --- Migrations ----------------------------------------------------------

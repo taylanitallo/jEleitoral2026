@@ -76,11 +76,21 @@ sobe e nega tudo:
    de e-mail inteiro. Colocá-lo em `false` derruba o login com e-mail e senha
    ("Email logins are disabled"). Quem barra autocadastro é o `enable_signup` da
    seção `[auth]`.
-2. **`app.segredo_hmac`.** A função `public.hmac_indice` depende dela para gerar
-   o índice de busca sobre CPF e título criptografados.
-   ```sql
-   alter database postgres set app.segredo_hmac = '<mesmo valor de SEGREDO_HMAC_INDICE>';
-   ```
+2. **`SEGREDO_HMAC_INDICE` no ambiente da API.** É dele que sai o índice de
+   busca sobre CPF e título criptografados.
+
+   Edições anteriores deste runbook mandavam rodar
+   `alter database postgres set app.segredo_hmac = ...`. **Esse comando não
+   funciona no Supabase** e nunca funcionou: desde o PostgreSQL 15, definir
+   parâmetro personalizado no nível de banco ou de papel exige superusuário, e o
+   papel `postgres` do Supabase não é. A tentativa responde
+   `permission denied to set parameter "app.segredo_hmac"`.
+
+   Não é preciso, e o desenho já era outro: `BancoService.executarComoUsuario`
+   injeta o segredo **por transação** com `set_config(..., true)`, lendo a
+   variável de ambiente da API. Basta que `SEGREDO_HMAC_INDICE` esteja correta
+   na Railway.
+
    Se este valor mudar depois de haver dados gravados, **todos os índices de
    busca param de casar** e nenhum entrevistado é encontrado por documento. Ele
    é tão permanente quanto a chave AES.
@@ -164,18 +174,14 @@ lê.
 
 ### Pendente em produção
 
-**`app.segredo_hmac` ainda não foi definido em produção.** Precisa ser feito
-**antes** da primeira gravação de CPF ou título cifrado — depois disso, mudar o
-valor quebra todos os índices de busca já gravados e nenhum entrevistado é
-encontrado por documento. Exige a string de conexão de produção, que não está
-neste repositório:
+**`SEGREDO_HMAC_INDICE` e `CHAVE_CRIPTOGRAFIA_AES` na Railway.** São os dois
+valores irreversíveis do sistema: trocar qualquer um depois de haver documento
+cifrado gravado inutiliza o que já está na base. Defina antes do primeiro
+cadastro em campo, guarde fora do repositório e não gere de novo "para
+testar".
 
-```sql
-alter database postgres set app.segredo_hmac = '<SEGREDO_HMAC_INDICE de produção>';
-```
-
-Confirme com `pnpm --filter @jeleitoral/api verificar:ambiente` apontando
-`BANCO_URL` para produção.
+Confirme com `verificar:ambiente` apontando `BANCO_URL` para produção — ele
+compara o cálculo do banco com o da API e acusa divergência.
 
 ## 4. Ordem do primeiro deploy
 

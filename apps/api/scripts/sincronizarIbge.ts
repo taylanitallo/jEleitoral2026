@@ -15,7 +15,13 @@
  * aparece uma vez só, e não em duas versões que divergem com o tempo.
  */
 import 'reflect-metadata';
-import 'dotenv/config';
+import { resolve as resolverCaminho } from 'node:path';
+import { fileURLToPath as paraCaminho } from 'node:url';
+import { config as carregarEnv } from 'dotenv';
+
+// `.env` da RAIZ do monorepo: `dotenv/config` procura em process.cwd(),
+// que com `pnpm --filter` e `apps/api`, e o arquivo mora na raiz.
+carregarEnv({ path: resolverCaminho(paraCaminho(new URL('.', import.meta.url)), '../../../.env') });
 import { BancoService } from '../src/banco/banco.service.js';
 import { ConectorIbgeLocalidades } from '../src/integracoes/conectorIbgeLocalidades.js';
 

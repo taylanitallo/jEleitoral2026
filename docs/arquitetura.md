@@ -161,9 +161,21 @@ Ordenadas por quanto bloqueiam o uso real.
 1. ~~**Custom Access Token Hook do Supabase**~~ — **resolvido em homologação
    (04/08/2026)** por `supabase config push`. `verificar:ambiente` emite um token
    real e confirma os claims. **Produção ainda não recebeu o push.**
-2. ~~**`app.segredo_hmac`**~~ — **já estava configurado** em homologação; a
-   pendência era um registro desatualizado. Continua valendo o alerta: mudá-la
-   depois de haver documento cifrado gravado quebra todos os índices de busca.
+2. ~~**`app.segredo_hmac`**~~ — **a pendência estava mal formulada.** Ela pedia
+   um `alter database ... set` que o Supabase não permite (parâmetro
+   personalizado exige superusuário desde o PostgreSQL 15). Não é necessário: a
+   API injeta o segredo por transação, a partir do ambiente.
+
+   O que estava de fato quebrado era pior e ninguém via: `public.hmac_indice`
+   caía em `coalesce(current_setting(...), '')` e, **sem o segredo, calculava o
+   índice com chave vazia em vez de falhar**. A busca por CPF voltava vazia, o
+   operador concluía que a pessoa não existia e cadastrava de novo. A migration
+   0017 troca isso por erro explícito e corrige a volatilidade da função
+   (`immutable` → `stable`, já que ela lê configuração de sessão).
+
+   `verificar:ambiente` agora prova o acoplamento que importa: o HMAC calculado
+   no banco tem de bater com o calculado em TypeScript, senão o entrevistado é
+   gravado com um índice e procurado com outro.
 3. **Autenticação: falta só o convite.** O registro anterior ("não implementada")
    estava errado e custou uma reavaliação de prazo. O que **existe e funciona**:
    tela de login, MFA/TOTP com inscrição pelo QR no primeiro acesso, cookies

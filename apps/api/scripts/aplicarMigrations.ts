@@ -10,13 +10,18 @@
  * exists` — e a única saída era recriar o banco, o que num ambiente com dados
  * de campo não é saída nenhuma.
  */
-// Lê o `.env` local quando existir. No CI e em produção as variáveis já vêm do
-// ambiente e o arquivo não existe — o dotenv não faz nada, sem erro.
-import 'dotenv/config';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
 import { Client } from 'pg';
+
+// Lê o `.env` da RAIZ do monorepo, não o do diretório atual. `dotenv/config`
+// sozinho procura em `process.cwd()`, que com `pnpm --filter` é `apps/api` — e
+// o arquivo mora na raiz. O sintoma era "Defina BANCO_URL" com a variável
+// preenchida. No CI e em produção as variáveis já vêm do ambiente e o arquivo
+// não existe; o dotenv não faz nada, sem erro.
+config({ path: resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../.env') });
 
 // `fileURLToPath` e não `.pathname`: o caminho deste projeto tem espaço, que na
 // URL vira `%20` e chega ao `scandir` como diretório inexistente.
