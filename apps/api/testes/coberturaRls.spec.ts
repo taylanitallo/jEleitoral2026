@@ -16,6 +16,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
 
+import { resolve as resolverCaminho } from 'node:path';
+import { fileURLToPath as paraCaminho } from 'node:url';
+import { config as carregarEnvDaRaiz } from 'dotenv';
+
+// O .env mora na RAIZ do monorepo, e o vitest roda com cwd em apps/api. No CI
+// as variaveis ja vem do ambiente e o arquivo nao existe — o dotenv nao faz
+// nada, sem erro.
+carregarEnvDaRaiz({ path: resolverCaminho(paraCaminho(new URL('.', import.meta.url)), '../../../.env') });
+
 /**
  * Tabelas de REFERÊNCIA: dado público do IBGE e do TSE, igual para todos os
  * clientes, sem `id_organizacao` por natureza. Continuam exigindo RLS e
@@ -42,6 +51,11 @@ const TABELAS_DE_REFERENCIA = new Set([
   'permissoes',
   'planos',
   'boletins_apuracao',
+  // Catálogo dos perfis-padrão, igual para todas as organizações. Saiu de um
+  // literal jsonb dentro de `semear_perfis_organizacao` e virou dado na 0019,
+  // para cada módulo novo não precisar reescrever a função inteira.
+  'perfis_padrao',
+  'perfil_permissao_padrao',
 ]);
 
 /**

@@ -16,6 +16,15 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from 'pg';
 import { randomUUID } from 'node:crypto';
 
+import { resolve as resolverCaminho } from 'node:path';
+import { fileURLToPath as paraCaminho } from 'node:url';
+import { config as carregarEnvDaRaiz } from 'dotenv';
+
+// O .env mora na RAIZ do monorepo, e o vitest roda com cwd em apps/api. No CI
+// as variaveis ja vem do ambiente e o arquivo nao existe — o dotenv nao faz
+// nada, sem erro.
+carregarEnvDaRaiz({ path: resolverCaminho(paraCaminho(new URL('.', import.meta.url)), '../../../.env') });
+
 const PAPEL_TESTE = 'testador_rls';
 
 const orgA = randomUUID();

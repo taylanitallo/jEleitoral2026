@@ -32,6 +32,17 @@ const EsquemaConfiguracao = z.object({
 
   ANTHROPIC_API_KEY: z.string().optional(),
   IA_MODELO_PADRAO: z.string().default('claude-sonnet-5'),
+  /**
+   * Teto mensal de tokens por organização, quando o plano não define o seu.
+   *
+   * Estava no `.env.exemplo` e **não estava aqui** — como o Zod descarta chave
+   * desconhecida sem reclamar, a variável era lida do arquivo e jogada fora em
+   * silêncio. Quem a preenchesse teria toda razão em supor que havia limite.
+   *
+   * Declarar não basta para ela valer: quem consulta o limite antes de chamar o
+   * modelo ainda não existe. Ver `ia.service.ts`.
+   */
+  IA_LIMITE_CREDITOS_MENSAL_PADRAO: z.coerce.number().int().nonnegative().default(100_000),
 
   INTEGRACOES_USER_AGENT: z.string().default('jEleitoral/1.0 (+https://jeos.com.br)'),
   IBGE_URL_BASE: z.string().url().default('https://servicodados.ibge.gov.br/api/v1/localidades'),

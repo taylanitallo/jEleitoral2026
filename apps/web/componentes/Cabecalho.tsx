@@ -13,6 +13,7 @@ import {
   Target,
   TrendingUp,
   UserSquare2,
+  Users,
   Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ const ITENS = [
     icone: Building2,
     permissao: 'campanhas.gerenciar',
   },
+  { href: '/cadastros/usuarios', rotulo: 'Equipe', icone: Users, permissao: 'usuarios.ler' },
   {
     href: '/cadastros/candidatos',
     rotulo: 'Candidatos',
