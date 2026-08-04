@@ -2,7 +2,9 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import type { ClaimsUsuario } from '@jeleitoral/tipos';
 import {
   Diagnostico,
+  EixosNarrativosSugeridos,
   EsquemaNeutroConsulta,
+  EsquemaNeutroEixos,
   EsquemaNeutroDiagnostico,
   EsquemaNeutroRevisao,
   InterpretacaoConsulta,
@@ -183,6 +185,73 @@ export class IaService {
         ...(interpretado.limite !== undefined ? { limite: interpretado.limite } : {}),
       },
       confianca: interpretado.confianca,
+    };
+  }
+
+  /**
+   * Sugere eixos narrativos a partir do diagnóstico agregado.
+   *
+   * O que entra são contagens: temas mais citados, distribuição por território e
+   * o clima eleitoral de cada um. É o cruzamento que produz eixo acionável — "o
+   * problema mais citado no Centro é saneamento, e o Centro tem 48% de
+   * indecisos" leva a discurso; a lista de problemas sozinha leva a plano de
+   * governo genérico.
+   *
+   * A sugestão **não é persistida aqui**. Ela volta para a tela, o coordenador
+   * escolhe o que aproveita, e só o escolhido vira linha em `eixos_narrativos`.
+   * Narrativa de campanha gerada e gravada sem alguém ler seria a máquina
+   * escrevendo o que o candidato vai dizer.
+   */
+  async sugerirEixosNarrativos(
+    claims: ClaimsUsuario,
+    entrada: {
+      idCampanha: string;
+      agregado: Record<string, unknown>;
+      coberturaAmostral: number;
+    },
+  ): Promise<{
+    eixos: EixosNarrativosSugeridos['eixos'];
+    advertencia: string | null;
+    geradoPorIa: true;
+  }> {
+    garantirSemDadoPessoal(entrada.agregado, 'agregadoNarrativo');
+
+    const resposta = await this.executar(claims, {
+      idCampanha: entrada.idCampanha,
+      funcionalidade: 'eixos_narrativos',
+      resumoEntrada: {
+        cobertura: entrada.coberturaAmostral,
+        chaves: Object.keys(entrada.agregado),
+      },
+      pedido: {
+        operacao: 'eixos_narrativos',
+        instrucaoSistema:
+          'Você ajuda uma equipe de campanha brasileira a transformar o que ela ouviu em campo ' +
+          'em eixos de comunicação. Responda em português do Brasil. Trabalhe APENAS com os ' +
+          'números fornecidos: não invente contexto político, não faça afirmação factual sobre ' +
+          'candidatos ou adversários, e não proponha promessa que os dados não sustentem. ' +
+          'Cada eixo deve citar, em "provas", os números do próprio agregado que o justificam. ' +
+          'Quando a cobertura amostral for baixa, diga isso nos riscos do eixo. ' +
+          'Proponha no máximo quatro eixos: linha narrativa é escolha, não inventário.',
+        entradaUsuario:
+          `Cobertura amostral: ${(entrada.coberturaAmostral * 100).toFixed(1)}%.
+` +
+          `Diagnóstico agregado:
+${JSON.stringify(entrada.agregado, null, 2)}`,
+        maxTokensSaida: 16000,
+        esforco: 'alto',
+        raciocinio: true,
+        esquemaSaida: EsquemaNeutroEixos,
+        cachearSistema: true,
+      },
+    });
+
+    const sugerido = this.validar(resposta.textoJson, EixosNarrativosSugeridos, 'eixos narrativos');
+
+    return {
+      eixos: sugerido.eixos,
+      advertencia: montarAdvertenciaDeCobertura(entrada.coberturaAmostral),
+      geradoPorIa: true,
     };
   }
 

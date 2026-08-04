@@ -18,6 +18,12 @@ const EntradaRevisao = z.object({
   texto: z.string().trim().min(10).max(4000),
 });
 
+const EntradaEixos = z.object({
+  idCampanha: Uuid,
+  agregado: z.record(z.unknown()),
+  coberturaAmostral: z.coerce.number().min(0).max(1),
+});
+
 const EntradaConsulta = z.object({
   idCampanha: Uuid,
   pergunta: z.string().trim().min(5).max(500),
@@ -62,6 +68,12 @@ class IaController {
    * chamada que falhou tambem consome, e some do relatorio quem so soma o que
    * deu certo.
    */
+  @Post('eixos-narrativos')
+  @ExigePermissao('planejamento.gerenciar')
+  async eixos(@Claims() claims: ClaimsUsuario, @Body() corpo: unknown): Promise<unknown> {
+    return this.ia.sugerirEixosNarrativos(claims, EntradaEixos.parse(corpo));
+  }
+
   @Get('uso')
   @ExigePermissao('ia.usar')
   async uso(@Claims() claims: ClaimsUsuario): Promise<unknown> {

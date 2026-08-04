@@ -566,3 +566,16 @@ export const RotuloOrigemProblema: Record<OrigemProblema, string> = {
   OBSERVACAO: 'Observação da equipe',
   DADO_PUBLICO: 'Dado público',
 };
+
+export const StatusAcao = z.enum(['PLANEJADA', 'EM_EXECUCAO', 'CONCLUIDA', 'CANCELADA']);
+export type StatusAcao = z.infer<typeof StatusAcao>;
+
+export const RotuloStatusAcao: Record<StatusAcao, string> = {
+  PLANEJADA: 'Planejada',
+  EM_EXECUCAO: 'Em execução',
+  CONCLUIDA: 'Concluída',
+  CANCELADA: 'Cancelada',
+};
+
+export const StatusPlanejamento = z.enum(['RASCUNHO', 'VIGENTE', 'ENCERRADO']);
+export type StatusPlanejamento = z.infer<typeof StatusPlanejamento>;

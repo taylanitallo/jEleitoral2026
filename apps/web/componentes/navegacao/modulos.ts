@@ -71,6 +71,11 @@ export const GRUPOS: GrupoModulos[] = [
     itens: [
       { href: '/planejamento/areas', rotulo: 'Áreas', permissao: 'planejamento.ler' },
       {
+        href: '/planejamento/narrativa',
+        rotulo: 'Narrativa',
+        permissao: 'planejamento.ler',
+      },
+      {
         href: '/planejamento/diagnostico',
         rotulo: 'Diagnóstico',
         permissao: 'diagnostico.ler',
@@ -130,6 +135,7 @@ export const ICONE_POR_ROTA: Record<string, LucideIcon> = {
   '/painel': LayoutDashboard,
   '/campo/entrevista': ClipboardList,
   '/planejamento/areas': Compass,
+  '/planejamento/narrativa': Compass,
   '/planejamento/diagnostico': ClipboardList,
   '/agenda': CalendarDays,
   '/mobilizacao/ativistas': Megaphone,

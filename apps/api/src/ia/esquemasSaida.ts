@@ -144,6 +144,16 @@ export type InterpretacaoConsulta = z.infer<typeof InterpretacaoConsulta>;
  * `esquemas/dialetos.ts` e o teste que confere as duas saídas.
  */
 import { lista, numero, objeto, texto } from './esquemas/neutro.js';
+import { TemaProblema } from '@jeleitoral/tipos';
+
+/**
+ * Os temas, como tupla, para o enum do esquema.
+ *
+ * Vem de `TemaProblema` e nao de uma lista repetida aqui: o enum do Postgres, o
+ * Zod dos tipos e este esquema tem de mudar juntos, e a unica forma de garantir
+ * isso e nao ter uma quarta copia.
+ */
+const TemaProblemaValores = TemaProblema.options;
 
 export const EsquemaNeutroDiagnostico = objeto({
   pontosFortes: lista(texto()),
@@ -177,3 +187,51 @@ export const EsquemaNeutroConsulta = objeto(
   // escolhida; o Zod já os tem como opcionais.
   { opcionais: ['limiarPercentual', 'limite'] },
 );
+
+// --- Eixos narrativos --------------------------------------------------------
+
+/**
+ * Sugestão de linha narrativa a partir do diagnóstico agregado.
+ *
+ * `temasRelacionados` é o elo que devolve rastreabilidade: o modelo diz de
+ * quais temas o eixo saiu, e a tela usa isso para vincular o eixo aos problemas
+ * reais. Sem ele a sugestão seria opinião solta, e o valor do módulo é
+ * justamente ligar discurso a evidência.
+ */
+export const EsquemaNeutroEixos = objeto({
+  eixos: lista(
+    objeto(
+      {
+        titulo: texto(),
+        sintese: texto(),
+        publicoAlvo: texto(),
+        mensagensChave: lista(texto()),
+        provas: lista(texto()),
+        riscos: lista(texto()),
+        temasRelacionados: lista(texto({ enumeracao: TemaProblemaValores })),
+        prioridade: texto({ enumeracao: ['ALTA', 'MEDIA', 'BAIXA'] }),
+      },
+      { opcionais: ['publicoAlvo'] },
+    ),
+  ),
+});
+
+export const EixosNarrativosSugeridos = z.object({
+  eixos: z
+    .array(
+      z.object({
+        titulo: z.string().min(3).max(160),
+        sintese: z.string().min(10).max(2000),
+        publicoAlvo: z.string().max(200).nullable().optional(),
+        mensagensChave: z.array(z.string().max(300)).max(10),
+        provas: z.array(z.string().max(300)).max(10),
+        riscos: z.array(z.string().max(300)).max(10),
+        temasRelacionados: z.array(z.enum(TemaProblemaValores)).max(14),
+        prioridade: z.enum(['ALTA', 'MEDIA', 'BAIXA']),
+      }),
+    )
+    // Mais que isso deixa de ser linha narrativa e vira lista de tudo o que a
+    // campanha poderia falar — o oposto do que o módulo serve para produzir.
+    .max(6),
+});
+export type EixosNarrativosSugeridos = z.infer<typeof EixosNarrativosSugeridos>;
