@@ -7,6 +7,9 @@ dist/
 build/
 .next/
 .next-local/
+# Qualquer diretorio de build do Next, inclusive os criados ad hoc com
+# NEXT_DIRETORIO_BUILD. Sem o coringa, um diretorio novo entra no commit.
+.next-*/
 out/
 *.tsbuildinfo
 
