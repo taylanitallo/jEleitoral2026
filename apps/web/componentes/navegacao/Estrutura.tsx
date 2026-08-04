@@ -1,12 +1,22 @@
 'use client';
 
-import { LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Botao, cn, useTema } from '@jeleitoral/ui';
 import { api } from '@/lib/api';
 import { grupoDaRota, gruposVisiveis, ICONE_POR_ROTA } from './modulos';
+
+const CHAVE_GRUPOS_ABERTOS = 'jeleitoral.modulos-abertos';
+
+function gravarAbertos(grupos: string[]): void {
+  try {
+    window.localStorage.setItem(CHAVE_GRUPOS_ABERTOS, JSON.stringify(grupos));
+  } catch {
+    // Sem armazenamento a lateral segue funcionando, só não lembra.
+  }
+}
 
 interface Sessao {
   email: string;
@@ -61,38 +71,137 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
   // senão apareceria aba para uma tela que a API recusaria.
   const abas = grupos.find((grupo) => grupo.id === grupoAtivo?.id)?.itens ?? [];
 
+  /*
+   * Quais grupos estão abertos.
+   *
+   * `null` enquanto a preferência não foi lida: `localStorage` não existe no
+   * servidor, e ler durante a renderização daria divergência de hidratação. Até
+   * carregar, vale a regra do grupo ativo — que é o que a pessoa quer ver de
+   * qualquer forma.
+   */
+  const [abertosSalvos, definirAbertosSalvos] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    try {
+      const salvo = window.localStorage.getItem(CHAVE_GRUPOS_ABERTOS);
+      definirAbertosSalvos(salvo ? (JSON.parse(salvo) as string[]) : []);
+    } catch {
+      // Navegador com armazenamento bloqueado: a lateral funciona, só não
+      // lembra do estado. Não é motivo para quebrar a tela.
+      definirAbertosSalvos([]);
+    }
+  }, []);
+
+  // Navegar para um grupo o abre. Sem isto, quem chega por link direto a uma
+  // tela de grupo recolhido não enxerga onde está na lateral.
+  useEffect(() => {
+    if (!grupoAtivo) return;
+    definirAbertosSalvos((atual) => {
+      if (atual === null || atual.includes(grupoAtivo.id)) return atual;
+      const proximo = [...atual, grupoAtivo.id];
+      gravarAbertos(proximo);
+      return proximo;
+    });
+  }, [grupoAtivo]);
+
+  const estaAberto = (idGrupo: string): boolean =>
+    abertosSalvos === null ? grupoAtivo?.id === idGrupo : abertosSalvos.includes(idGrupo);
+
+  const alternarGrupo = (idGrupo: string): void => {
+    definirAbertosSalvos((atual) => {
+      const base = atual ?? (grupoAtivo ? [grupoAtivo.id] : []);
+      const proximo = base.includes(idGrupo)
+        ? base.filter((id) => id !== idGrupo)
+        : [...base, idGrupo];
+      gravarAbertos(proximo);
+      return proximo;
+    });
+  };
+
   const lateral = (
-    <nav aria-label="Módulos" className="flex flex-col gap-4 p-3">
+    <nav aria-label="Módulos" className="flex flex-col gap-1 p-3">
       {grupos.map((grupo) => {
         const Icone = grupo.icone;
+        const grupoAtivoAqui = grupoAtivo?.id === grupo.id;
+
+        /*
+         * Grupo de uma tela só vira link direto, sem seta.
+         *
+         * Recolher para revelar um item é um clique que não entrega nada, e a
+         * seta prometeria conteúdo que não existe.
+         */
+        if (grupo.itens.length === 1) {
+          const item = grupo.itens[0]!;
+          const ativo = caminho === item.href || caminho.startsWith(`${item.href}/`);
+          return (
+            <Link
+              key={grupo.id}
+              href={item.href}
+              aria-current={ativo ? 'page' : undefined}
+              className={cn(
+                'flex items-center gap-2 rounded-[var(--raio)] px-2 py-1.5 text-sm',
+                ativo
+                  ? 'bg-[hsl(var(--acento-sutil))] font-medium text-[hsl(var(--acento))]'
+                  : 'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))]',
+              )}
+            >
+              <Icone className="size-4 shrink-0" aria-hidden="true" />
+              {grupo.rotulo}
+            </Link>
+          );
+        }
+
+        const aberto = estaAberto(grupo.id);
+        const idLista = `modulos-${grupo.id}`;
+
         return (
           <div key={grupo.id}>
-            <p className="mb-1 flex items-center gap-2 px-2 text-xs font-medium uppercase tracking-wide text-[hsl(var(--texto-fraco))]">
-              <Icone className="size-3.5" aria-hidden="true" />
-              {grupo.rotulo}
-            </p>
+            <button
+              type="button"
+              onClick={() => alternarGrupo(grupo.id)}
+              aria-expanded={aberto}
+              aria-controls={idLista}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-[var(--raio)] px-2 py-1.5 text-sm',
+                grupoAtivoAqui
+                  ? 'font-medium text-[hsl(var(--texto))]'
+                  : 'text-[hsl(var(--texto-secundario))]',
+                'hover:bg-[hsl(var(--fundo-sutil))]',
+              )}
+            >
+              <Icone className="size-4 shrink-0" aria-hidden="true" />
+              <span className="flex-1 text-left">{grupo.rotulo}</span>
+              <ChevronDown
+                className={cn('size-4 shrink-0 transition-transform', aberto ? '' : '-rotate-90')}
+                aria-hidden="true"
+              />
+            </button>
 
-            <ul className="flex flex-col">
-              {grupo.itens.map((item) => {
-                const ativo = caminho === item.href || caminho.startsWith(`${item.href}/`);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={ativo ? 'page' : undefined}
-                      className={cn(
-                        'block rounded-[var(--raio)] px-2 py-1.5 text-sm',
-                        ativo
-                          ? 'bg-[hsl(var(--acento-sutil))] font-medium text-[hsl(var(--acento))]'
-                          : 'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))]',
-                      )}
-                    >
-                      {item.rotulo}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            {aberto ? (
+              <ul id={idLista} className="flex flex-col">
+                {grupo.itens.map((item) => {
+                  const ativo = caminho === item.href || caminho.startsWith(`${item.href}/`);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={ativo ? 'page' : undefined}
+                        className={cn(
+                          // Recuo alinhado ao rótulo do grupo, para a lista ler
+                          // como filha dele e não como outro nível.
+                          'block rounded-[var(--raio)] py-1.5 pl-8 pr-2 text-sm',
+                          ativo
+                            ? 'bg-[hsl(var(--acento-sutil))] font-medium text-[hsl(var(--acento))]'
+                            : 'text-[hsl(var(--texto-secundario))] hover:bg-[hsl(var(--fundo-sutil))]',
+                        )}
+                      >
+                        {item.rotulo}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
           </div>
         );
       })}
