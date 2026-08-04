@@ -7,6 +7,7 @@ import type {
 import { BancoService } from '../banco/banco.service.js';
 import { carregarConfiguracao } from '../comum/configuracao.js';
 import { ClienteHttp } from './clienteHttp.js';
+import { escolherCsvDaUf, lerZip, pareceZip } from './lerZip.js';
 
 interface RecursoCkan {
   id: string;
@@ -131,31 +132,44 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
       const recurso = this.acharRecursoDaUf(recursos, parametros.uf, 'perfil do eleitorado');
       this.registrador.log(`Baixando "${recurso.name}" de ${recurso.url}…`);
 
-      const linhas = await this.baixarCsv(recurso.url);
-      processados = linhas.length;
-
       await this.banco.executarEmTabelasDeReferencia(async (conexao) => {
-        for (const linha of linhas) {
+        // Cache de secao: sem ele, cada uma das milhoes de linhas faria a mesma
+        // consulta de resolucao — o perfil traz varias linhas por secao, uma
+        // por faixa etaria, genero e escolaridade.
+        const secoesResolvidas = new Map<string, string | null>();
+
+        processados = await this.percorrerCsv(recurso.url, parametros.uf, async (linha) => {
           const numeroZona = Number(linha['NR_ZONA']);
           const numeroSecao = Number(linha['NR_SECAO']);
           const idMunicipio = Number(linha['CD_MUNICIPIO_IBGE'] ?? linha['CD_MUNICIPIO']);
           const totalEleitores = Number(linha['QT_ELEITORES_PERFIL'] ?? linha['QT_ELEITORES'] ?? 0);
-          if (!numeroZona || !numeroSecao) continue;
+          // `return` e nao `continue`: isto agora e o corpo de um callback por
+          // linha, e nao mais de um `for`.
+          if (!numeroZona || !numeroSecao) return;
 
-          const { rows } = await conexao.query<{ id: string }>(
-            `select s.id
-               from public.secoes_eleitorais s
-               join public.zonas_eleitorais z on z.id = s.id_zona
-               join public.estados e on e.id_ibge = z.id_estado
-              where e.sigla = $1 and z.numero = $2 and s.numero = $3
-              limit 1`,
-            [parametros.uf, numeroZona, numeroSecao],
-          );
-          const idSecao = rows[0]?.id;
+          const chaveSecao = `${numeroZona}:${numeroSecao}`;
+          let idSecao = secoesResolvidas.get(chaveSecao);
+
+          if (idSecao === undefined) {
+            const { rows } = await conexao.query<{ id: string }>(
+              `select s.id
+                 from public.secoes_eleitorais s
+                 join public.zonas_eleitorais z on z.id = s.id_zona
+                 join public.estados e on e.id_ibge = z.id_estado
+                where e.sigla = $1 and z.numero = $2 and s.numero = $3
+                limit 1`,
+              [parametros.uf, numeroZona, numeroSecao],
+            );
+            // Guarda tambem a ausencia: sem isso, secao inexistente seria
+            // reconsultada em cada uma das dezenas de linhas de perfil dela.
+            idSecao = rows[0]?.id ?? null;
+            secoesResolvidas.set(chaveSecao, idSecao);
+          }
+
           if (!idSecao) {
             // Seção ainda não carregada. Não é erro fatal: a carga de locais e
             // seções roda antes e pode estar defasada.
-            continue;
+            return;
           }
 
           await conexao.query(
@@ -180,10 +194,26 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
           );
           inseridos += 1;
           void idMunicipio;
-        }
+        });
       });
     } catch (erro) {
       erros.push(String(erro));
+    }
+
+    /*
+     * Ler o arquivo inteiro e não gravar nada NÃO é sucesso.
+     *
+     * Antes desta guarda, a carga do Ceará devolveu "OK, 483.935 processados, 0
+     * inseridos" — o conector tinha lido bytes de ZIP como texto e nenhuma
+     * linha casou com seção nenhuma. Reportar sucesso ali é o pior desfecho
+     * possível: a projeção fica sem denominador e o número que ela devolve
+     * parece legítimo.
+     */
+    if (erros.length === 0 && processados > 0 && inseridos === 0) {
+      erros.push(
+        `${processados} linhas lidas e nenhuma gravada. O layout do arquivo mudou, ` +
+          'ou as seções eleitorais desta UF ainda não foram carregadas.',
+      );
     }
 
     return {
@@ -207,29 +237,137 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
    * vírgula dentro de campo entre aspas, e uma biblioteca completa de CSV seria
    * peso morto para um formato tão previsível.
    */
-  async baixarCsvPublico(url: string): Promise<Array<Record<string, string>>> {
-    return this.baixarCsv(url);
+  async baixarCsvPublico(url: string, uf?: string): Promise<Array<Record<string, string>>> {
+    return this.baixarCsv(url, uf);
   }
 
-  private async baixarCsv(url: string): Promise<Array<Record<string, string>>> {
-    const fluxo = await this.http.obterFluxo(url);
-    const bytes = Buffer.from(await new Response(fluxo).arrayBuffer());
-    const texto = new TextDecoder('iso-8859-1').decode(bytes);
-
-    const linhas = texto.split(/\r?\n/).filter((linha) => linha.trim().length > 0);
-    if (linhas.length < 2) return [];
-
+  /**
+   * Baixa e interpreta um recurso do TSE.
+   *
+   * O `uf` não é enfeite: os arquivos nacionais trazem um CSV por estado dentro
+   * do mesmo ZIP, e sem ele a carga do Ceará traz a Bahia — a primeira entrada
+   * em ordem alfabética.
+   */
+  /**
+   * Percorre o CSV entregando um registro por vez.
+   *
+   * O perfil do eleitorado por secao do Ceara tem milhoes de linhas. Guardar
+   * todas como objeto antes de gravar derruba o processo com heap out of
+   * memory — e derruba depois de vinte minutos de download, o que torna cada
+   * tentativa cara. Entregar por callback mantem o uso de memoria constante,
+   * qualquer que seja o tamanho da UF.
+   */
+  private async percorrerCsv(
+    url: string,
+    uf: string | undefined,
+    aoLer: (registro: Record<string, string>) => Promise<void> | void,
+  ): Promise<number> {
+    const conteudo = await this.obterConteudo(url, uf);
     const separar = (linha: string): string[] =>
       linha.split(';').map((campo) => campo.replace(/^"|"$/g, '').trim());
 
-    const cabecalho = separar(linhas[0]!);
-    return linhas.slice(1).map((linha) => {
+    let cabecalho: string[] | null = null;
+    let inicio = 0;
+    let lidos = 0;
+
+    const processar = async (bruta: string): Promise<void> => {
+      // Os arquivos do TSE usam CRLF; o corte e feito no LF e sobra o CR.
+      const linha = bruta.endsWith('\r') ? bruta.slice(0, -1) : bruta;
+      if (linha.trim().length === 0) return;
+      if (!cabecalho) {
+        cabecalho = separar(linha);
+        return;
+      }
       const valores = separar(linha);
       const registro: Record<string, string> = {};
-      cabecalho.forEach((coluna, indice) => {
-        registro[coluna] = valores[indice] ?? '';
-      });
-      return registro;
-    });
+      for (let i = 0; i < cabecalho.length; i += 1) registro[cabecalho[i]!] = valores[i] ?? '';
+      lidos += 1;
+      await aoLer(registro);
+    };
+
+    for (let i = 0; i < conteudo.length; i += 1) {
+      if (conteudo[i] === 0x0a) {
+        await processar(conteudo.toString('latin1', inicio, i));
+        inicio = i + 1;
+      }
+    }
+    if (inicio < conteudo.length) {
+      await processar(conteudo.toString('latin1', inicio, conteudo.length));
+    }
+    return lidos;
+  }
+
+  /** Baixa o recurso e devolve o CSV ja descompactado, quando vier em ZIP. */
+  private async obterConteudo(url: string, uf?: string): Promise<Buffer> {
+    const fluxo = await this.http.obterFluxo(url);
+    const bytes = Buffer.from(await new Response(fluxo).arrayBuffer());
+    // O catalogo CKAN anuncia estes recursos como CSV, mas entrega ZIP. Decidir
+    // pelos bytes evita depender de o TSE ser coerente.
+    return pareceZip(bytes) ? escolherCsvDaUf(lerZip(bytes), uf ?? '').conteudo : bytes;
+  }
+
+  private async baixarCsv(url: string, uf?: string): Promise<Array<Record<string, string>>> {
+    const fluxo = await this.http.obterFluxo(url);
+    const bytes = Buffer.from(await new Response(fluxo).arrayBuffer());
+
+    // O catálogo CKAN anuncia estes recursos como CSV, mas entrega ZIP. Decidir
+    // pelos bytes, e não pela extensão da URL nem pelo `format` do catálogo, é o
+    // que evita depender de o TSE ser coerente.
+    const conteudo = pareceZip(bytes)
+      ? escolherCsvDaUf(lerZip(bytes), uf ?? '').conteudo
+      : bytes;
+
+    /*
+     * Percorre linha a linha sobre o Buffer, sem transformar o arquivo inteiro
+     * em uma string.
+     *
+     * O perfil do eleitorado por seção do Ceará descompacta para mais de meio
+     * gigabyte, e `TextDecoder.decode` do arquivo todo estoura o limite de
+     * string do V8 com `Cannot create a string longer than 0x1fffffe8
+     * characters`. O erro não menciona tamanho de arquivo nem UF, e some ao
+     * testar com um estado pequeno — o que faria a carga funcionar em
+     * homologação com SE e falhar em produção com SP.
+     *
+     * `latin1` no `toString` é o mesmo ISO-8859-1: byte a caractere, um para
+     * um. Preservar isso importa porque "JOSÉ" lido como UTF-8 vira "JOS?" e
+     * quebra a deduplicação por nome mais adiante.
+     */
+    const separar = (linha: string): string[] =>
+      linha.split(';').map((campo) => campo.replace(/^"|"$/g, '').trim());
+
+    const registros: Array<Record<string, string>> = [];
+    let cabecalho: string[] | null = null;
+    let inicio = 0;
+
+    const processarLinha = (bruta: string): void => {
+      const linha = bruta.endsWith('\r') ? bruta.slice(0, -1) : bruta;
+      if (linha.trim().length === 0) return;
+
+      if (!cabecalho) {
+        cabecalho = separar(linha);
+        return;
+      }
+
+      const valores = separar(linha);
+      const registro: Record<string, string> = {};
+      for (let i = 0; i < cabecalho.length; i += 1) {
+        registro[cabecalho[i]!] = valores[i] ?? '';
+      }
+      registros.push(registro);
+    };
+
+    for (let i = 0; i < conteudo.length; i += 1) {
+      if (conteudo[i] === 0x0a) {
+        processarLinha(conteudo.toString('latin1', inicio, i));
+        inicio = i + 1;
+      }
+    }
+    // Arquivo que não termina em quebra de linha — comum quando é gerado por
+    // exportação e não por editor.
+    if (inicio < conteudo.length) {
+      processarLinha(conteudo.toString('latin1', inicio, conteudo.length));
+    }
+
+    return registros;
   }
 }

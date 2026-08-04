@@ -4,6 +4,7 @@ import type {
   ParametrosSincronizacao,
   ResultadoSincronizacao,
 } from '@jeleitoral/tipos';
+import { normalizarTexto } from '@jeleitoral/utilitarios';
 import { BancoService } from '../banco/banco.service.js';
 import { ConectorTseDadosAbertos } from './conectorTseDadosAbertos.js';
 
@@ -59,7 +60,7 @@ export class ConectorTseEstrutura implements ConectorExterno {
       }
 
       this.registrador.log(`Carregando estrutura eleitoral de ${parametros.uf}…`);
-      const linhas = await this.ckan.baixarCsvPublico(recurso.url);
+      const linhas = await this.ckan.baixarCsvPublico(recurso.url, parametros.uf);
 
       // Filtra a UF no cliente: o arquivo é nacional neste recurso específico.
       const daUf = linhas.filter((linha) => linha['SG_UF'] === parametros.uf);
@@ -89,11 +90,39 @@ export class ConectorTseEstrutura implements ConectorExterno {
           );
         }
 
+        /*
+         * O TSE identifica municipio pelo CODIGO DELE, nao pelo do IBGE.
+         *
+         * Nao existe coluna `CD_MUNICIPIO_IBGE` neste arquivo — so
+         * `CD_MUNICIPIO`, que para Caninde e 13552 enquanto o IBGE usa 2303105.
+         * Ler a coluna inexistente devolvia zero e a linha era descartada na
+         * guarda logo abaixo: 25.639 linhas processadas, nenhuma gravada, e a
+         * carga ainda assim reportando sucesso.
+         *
+         * A ponte e o nome normalizado dentro do estado, que `normalizar_texto`
+         * ja calcula como coluna gerada. Nome de municipio e unico por UF, entao
+         * a correspondencia e segura; o que sobra sem casar e contado e
+         * relatado, nunca ignorado em silencio.
+         */
+        const municipiosPorNome = new Map<string, number>();
+        const { rows: municipios } = await conexao.query<{ id_ibge: number; nome: string }>(
+          `select id_ibge, nome_normalizado as nome
+             from public.municipios where id_estado = $1`,
+          [idEstado],
+        );
+        for (const municipio of municipios) municipiosPorNome.set(municipio.nome, municipio.id_ibge);
+
+        const naoEncontrados = new Set<string>();
+
         for (const linha of daUf) {
           const numeroZona = Number(linha['NR_ZONA']);
           const numeroSecao = Number(linha['NR_SECAO']);
           const codigoLocal = Number(linha['NR_LOCAL_VOTACAO']);
-          const idMunicipio = Number(linha['CD_MUNICIPIO_IBGE'] ?? 0);
+
+          const nomeMunicipio = normalizarNomeMunicipio(linha['NM_MUNICIPIO'] ?? '');
+          const idMunicipio = municipiosPorNome.get(nomeMunicipio) ?? 0;
+          if (!idMunicipio && nomeMunicipio) naoEncontrados.add(linha['NM_MUNICIPIO'] ?? '');
+
           if (!numeroZona || !numeroSecao || !codigoLocal || !idMunicipio) continue;
 
           let idZona = zonasCriadas.get(numeroZona);
@@ -149,12 +178,29 @@ export class ConectorTseEstrutura implements ConectorExterno {
           inseridos += 1;
         }
 
+        if (naoEncontrados.size > 0) {
+          erros.push(
+            `${naoEncontrados.size} municipio(s) do TSE sem correspondencia no IBGE: ` +
+              `${[...naoEncontrados].slice(0, 10).join(', ')}` +
+              `${naoEncontrados.size > 10 ? ' …' : ''}`,
+          );
+        }
+
         this.registrador.log(
           `${parametros.uf}: ${zonasCriadas.size} zonas, ${locaisCriados.size} locais, ${inseridos} seções.`,
         );
       });
     } catch (erro) {
       erros.push(String(erro));
+    }
+
+    // Ler tudo e nao gravar nada nao e sucesso — ver a mesma guarda em
+    // ConectorTseDadosAbertos, posta pelo mesmo motivo.
+    if (erros.length === 0 && processados > 0 && inseridos === 0) {
+      erros.push(
+        `${processados} linhas lidas e nenhuma gravada. Confira se o IBGE desta UF ja foi ` +
+          'carregado e se o layout do arquivo do TSE mudou.',
+      );
     }
 
     return {
@@ -191,6 +237,17 @@ export class ConectorTseEstrutura implements ConectorExterno {
  * locais de votação sem GPS no meio do Atlântico — e o antifraude passaria a
  * acusar GPS distante em massa.
  */
+/**
+ * Forma canonica do nome do municipio, para casar com `nome_normalizado`.
+ *
+ * Precisa espelhar `public.normalizar_texto`, que e o que gera a coluna do
+ * banco — divergir aqui faria a ponte TSE→IBGE falhar justamente nos nomes com
+ * acento, que sao a maioria no Ceara.
+ */
+function normalizarNomeMunicipio(valor: string): string {
+  return normalizarTexto(valor);
+}
+
 function numeroOuNulo(valor: string | undefined): number | null {
   if (!valor) return null;
   const numero = Number(valor.replace(',', '.'));

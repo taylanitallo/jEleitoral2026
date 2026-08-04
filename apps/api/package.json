@@ -15,6 +15,7 @@
     "verificar:integracoes": "tsx scripts/verificarIntegracoes.ts",
     "verificar:ambiente": "node scripts/verificarAmbiente.mjs",
     "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts",
+    "tse:sincronizar": "tsx scripts/sincronizarTse.ts",
     "usuario:senha": "node scripts/redefinirSenha.mjs"
   },
   "dependencies": {
