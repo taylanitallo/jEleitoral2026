@@ -156,9 +156,26 @@ lê.
 - **Homologação está configurada e verificada**: `verificar:ambiente` passa
   7/7, incluindo a emissão de um token real cujos claims chegam preenchidos.
   O `app.segredo_hmac` já estava definido; o que faltava era o `config push`.
-- **Produção ainda não recebeu o `config push`** — lá o hook continua inativo e
-  toda política nega. Antes de rodar, definir `SUPABASE_URL_SITE` e
-  `SUPABASE_URL_REDIRECIONAMENTO` com o domínio real, e não com `127.0.0.1`.
+- **Produção recebeu o `config push`** com `site_url = https://jeleitoral.vercel.app`
+  (domínio provisório — se mudar, repetir o push, senão os links de convite e de
+  recuperação de senha continuam apontando para o endereço antigo).
+- **Produção estava em 0015 e recebeu a 0016** por `supabase db push`. As duas
+  bases estão agora na mesma linha.
+
+### Pendente em produção
+
+**`app.segredo_hmac` ainda não foi definido em produção.** Precisa ser feito
+**antes** da primeira gravação de CPF ou título cifrado — depois disso, mudar o
+valor quebra todos os índices de busca já gravados e nenhum entrevistado é
+encontrado por documento. Exige a string de conexão de produção, que não está
+neste repositório:
+
+```sql
+alter database postgres set app.segredo_hmac = '<SEGREDO_HMAC_INDICE de produção>';
+```
+
+Confirme com `pnpm --filter @jeleitoral/api verificar:ambiente` apontando
+`BANCO_URL` para produção.
 
 ## 4. Ordem do primeiro deploy
 
