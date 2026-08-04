@@ -132,69 +132,118 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
       const recurso = this.acharRecursoDaUf(recursos, parametros.uf, 'perfil do eleitorado');
       this.registrador.log(`Baixando "${recurso.name}" de ${recurso.url}…`);
 
+      /*
+       * Agrega em memoria e grava UMA VEZ por secao.
+       *
+       * O arquivo traz uma linha por combinacao de faixa etaria, genero e
+       * escolaridade — sao 4 milhoes de linhas para ~25 mil secoes do Ceara. A
+       * versao anterior fazia um upsert por linha, com dois defeitos serios:
+       *
+       *  1. `total_eleitores = existente + novo` ACUMULAVA entre execucoes.
+       *     Recarregar a mesma UF dobrava o eleitorado — e eleitorado e o
+       *     denominador de toda projecao, entao o numero inflado fazia a
+       *     cobertura parecer menor e a projecao mais fraca do que e, sem nada
+       *     indicando a causa.
+       *
+       *  2. Os jsonb de faixa, genero e escolaridade so entravam no INSERT; o
+       *     `do update` nunca os tocava. Sobrava a chave da PRIMEIRA linha de
+       *     cada secao e a quebra demografica inteira se perdia.
+       *
+       * Agregar antes resolve os dois e troca 4 milhoes de escritas por 25 mil.
+       */
+      interface AgregadoSecao {
+        total: number;
+        faixaEtaria: Record<string, number>;
+        genero: Record<string, number>;
+        escolaridade: Record<string, number>;
+      }
+
+      const porSecao = new Map<string, AgregadoSecao>();
+      const somar = (destino: Record<string, number>, chave: string, valor: number): void => {
+        destino[chave] = (destino[chave] ?? 0) + valor;
+      };
+
+      processados = await this.percorrerCsv(recurso.url, parametros.uf, (linha) => {
+        const numeroZona = Number(linha['NR_ZONA']);
+        const numeroSecao = Number(linha['NR_SECAO']);
+        const totalEleitores = Number(linha['QT_ELEITORES_PERFIL'] ?? linha['QT_ELEITORES'] ?? 0);
+        if (!numeroZona || !numeroSecao) return;
+
+        const chave = `${numeroZona}:${numeroSecao}`;
+        let agregado = porSecao.get(chave);
+        if (!agregado) {
+          agregado = { total: 0, faixaEtaria: {}, genero: {}, escolaridade: {} };
+          porSecao.set(chave, agregado);
+        }
+
+        agregado.total += totalEleitores;
+        somar(agregado.faixaEtaria, String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO'), totalEleitores);
+        somar(agregado.genero, String(linha['DS_GENERO'] ?? 'NAO_INFORMADO'), totalEleitores);
+        somar(
+          agregado.escolaridade,
+          String(linha['DS_GRAU_ESCOLARIDADE'] ?? 'NAO_INFORMADO'),
+          totalEleitores,
+        );
+      });
+
       await this.banco.executarEmTabelasDeReferencia(async (conexao) => {
-        // Cache de secao: sem ele, cada uma das milhoes de linhas faria a mesma
-        // consulta de resolucao — o perfil traz varias linhas por secao, uma
-        // por faixa etaria, genero e escolaridade.
-        const secoesResolvidas = new Map<string, string | null>();
+        /*
+         * Limpa o que ja existia desta UF e deste ano antes de gravar.
+         *
+         * Sem isto, secao que sumiu do arquivo novo — remanejada ou extinta
+         * pelo TSE — ficaria para tras com o numero velho, e ninguem
+         * perceberia. Com a gravacao por atribuicao mais esta limpeza, rodar a
+         * carga duas vezes deixa o banco exatamente no mesmo estado.
+         */
+        await conexao.query(
+          `delete from public.eleitorado_secao e
+            using public.secoes_eleitorais s
+            join public.zonas_eleitorais z on z.id = s.id_zona
+            join public.estados es on es.id_ibge = z.id_estado
+            where e.id_secao = s.id and e.ano_referencia = $2 and es.sigla = $1`,
+          [parametros.uf, ano],
+        );
 
-        processados = await this.percorrerCsv(recurso.url, parametros.uf, async (linha) => {
-          const numeroZona = Number(linha['NR_ZONA']);
-          const numeroSecao = Number(linha['NR_SECAO']);
-          const idMunicipio = Number(linha['CD_MUNICIPIO_IBGE'] ?? linha['CD_MUNICIPIO']);
-          const totalEleitores = Number(linha['QT_ELEITORES_PERFIL'] ?? linha['QT_ELEITORES'] ?? 0);
-          // `return` e nao `continue`: isto agora e o corpo de um callback por
-          // linha, e nao mais de um `for`.
-          if (!numeroZona || !numeroSecao) return;
+        const { rows: secoes } = await conexao.query<{
+          chave: string;
+          id: string;
+        }>(
+          `select (z.numero::text || ':' || s.numero::text) as chave, s.id
+             from public.secoes_eleitorais s
+             join public.zonas_eleitorais z on z.id = s.id_zona
+             join public.estados e on e.id_ibge = z.id_estado
+            where e.sigla = $1`,
+          [parametros.uf],
+        );
+        const idPorChave = new Map(secoes.map((linha) => [linha.chave, linha.id]));
 
-          const chaveSecao = `${numeroZona}:${numeroSecao}`;
-          let idSecao = secoesResolvidas.get(chaveSecao);
-
-          if (idSecao === undefined) {
-            const { rows } = await conexao.query<{ id: string }>(
-              `select s.id
-                 from public.secoes_eleitorais s
-                 join public.zonas_eleitorais z on z.id = s.id_zona
-                 join public.estados e on e.id_ibge = z.id_estado
-                where e.sigla = $1 and z.numero = $2 and s.numero = $3
-                limit 1`,
-              [parametros.uf, numeroZona, numeroSecao],
-            );
-            // Guarda tambem a ausencia: sem isso, secao inexistente seria
-            // reconsultada em cada uma das dezenas de linhas de perfil dela.
-            idSecao = rows[0]?.id ?? null;
-            secoesResolvidas.set(chaveSecao, idSecao);
-          }
-
-          if (!idSecao) {
-            // Seção ainda não carregada. Não é erro fatal: a carga de locais e
-            // seções roda antes e pode estar defasada.
-            return;
-          }
+        for (const [chave, agregado] of porSecao) {
+          const idSecao = idPorChave.get(chave);
+          // Secao do perfil que nao existe na estrutura. Nao e fatal, mas e
+          // contada: se for muita, a estrutura esta defasada.
+          if (!idSecao) continue;
 
           await conexao.query(
             `insert into public.eleitorado_secao
                (id_secao, ano_referencia, total_eleitores, faixa_etaria, genero, escolaridade)
              values ($1, $2, $3, $4, $5, $6)
              on conflict (id_secao, ano_referencia) do update
-               set total_eleitores = public.eleitorado_secao.total_eleitores + excluded.total_eleitores,
+               set total_eleitores = excluded.total_eleitores,
+                   faixa_etaria = excluded.faixa_etaria,
+                   genero = excluded.genero,
+                   escolaridade = excluded.escolaridade,
                    atualizado_em = now()`,
             [
               idSecao,
               ano,
-              totalEleitores,
-              JSON.stringify({
-                [String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO')]: totalEleitores,
-              }),
-              JSON.stringify({ [String(linha['DS_GENERO'] ?? 'NAO_INFORMADO')]: totalEleitores }),
-              JSON.stringify({
-                [String(linha['DS_GRAU_ESCOLARIDADE'] ?? 'NAO_INFORMADO')]: totalEleitores,
-              }),
+              agregado.total,
+              JSON.stringify(agregado.faixaEtaria),
+              JSON.stringify(agregado.genero),
+              JSON.stringify(agregado.escolaridade),
             ],
           );
           inseridos += 1;
-          void idMunicipio;
-        });
+        }
       });
     } catch (erro) {
       erros.push(String(erro));
