@@ -40,13 +40,18 @@ async function principal(): Promise<void> {
   const ckan = new ConectorTseDadosAbertos(banco);
   const estrutura = new ConectorTseEstrutura(banco, ckan);
 
-  // O eleitorado vem primeiro: a estrutura de seções se apoia nele, e falhar na
-  // ordem inversa deixaria seções sem eleitorado, que é pior do que não ter
-  // nenhuma das duas — uma projeção com denominador vazio não avisa que está
-  // errada, ela só devolve número sem sentido.
+  /*
+   * A ESTRUTURA VEM PRIMEIRO, e a ordem não é preferência.
+   *
+   * O perfil do eleitorado resolve cada linha procurando a seção em
+   * `secoes_eleitorais` para descobrir a que id ela pertence. Rodando antes da
+   * estrutura, nenhuma seção existe, toda linha é descartada e a carga termina
+   * com zero gravado — que foi exatamente o que aconteceu na primeira execução
+   * do Ceará.
+   */
   const passadas = [
-    ['Perfil do eleitorado por seção', ckan],
     ['Estrutura eleitoral (zonas, seções, locais)', estrutura],
+    ['Perfil do eleitorado por seção', ckan],
   ] as const;
 
   let houveFalha = false;
