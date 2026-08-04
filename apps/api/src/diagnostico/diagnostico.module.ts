@@ -139,10 +139,7 @@ export class DiagnosticoController {
 
   @Get(':id/problemas')
   @ExigePermissao('diagnostico.ler')
-  async problemas(
-    @Claims() claims: ClaimsUsuario,
-    @Param('id') id: string,
-  ): Promise<unknown[]> {
+  async problemas(@Claims() claims: ClaimsUsuario, @Param('id') id: string): Promise<unknown[]> {
     const idDiagnostico = Uuid.parse(id);
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query(

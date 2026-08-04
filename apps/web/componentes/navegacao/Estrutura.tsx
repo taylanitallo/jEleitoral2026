@@ -246,9 +246,7 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
           <RodapeUsuario
             sessao={sessao}
             temaEscuro={temaAplicado === 'escuro'}
-            aoTrocarTema={() =>
-              definirPreferencia(temaAplicado === 'escuro' ? 'claro' : 'escuro')
-            }
+            aoTrocarTema={() => definirPreferencia(temaAplicado === 'escuro' ? 'claro' : 'escuro')}
             aoSair={() => void sair()}
           />
         </div>

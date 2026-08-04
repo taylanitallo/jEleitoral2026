@@ -110,17 +110,14 @@ class IaController {
       publico_alvo: string | null;
     };
 
-    const eixo = await this.banco.executarComoUsuario<LinhaEixo | null>(
-      claims,
-      async (conexao) => {
-        const { rows } = await conexao.query<LinhaEixo>(
-          `select id_campanha, titulo, sintese, mensagens, publico_alvo
+    const eixo = await this.banco.executarComoUsuario<LinhaEixo | null>(claims, async (conexao) => {
+      const { rows } = await conexao.query<LinhaEixo>(
+        `select id_campanha, titulo, sintese, mensagens, publico_alvo
              from public.eixos_narrativos where id = $1`,
-          [entrada.idEixo],
-        );
-        return rows[0] ?? null;
-      },
-    );
+        [entrada.idEixo],
+      );
+      return rows[0] ?? null;
+    });
 
     if (!eixo) throw new NotFoundException('Eixo narrativo não encontrado.');
 

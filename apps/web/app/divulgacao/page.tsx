@@ -104,9 +104,9 @@ function Cobertura({ idCampanha }: { idCampanha: string }): JSX.Element {
               {eixo.titulo}
             </span>
             <span className="text-xs text-[hsl(var(--texto-fraco))]">
-              {eixo.problemas_de_origem}{' '}
-              {eixo.problemas_de_origem === 1 ? 'problema' : 'problemas'} de origem ·{' '}
-              {eixo.publicadas} {eixo.publicadas === 1 ? 'peça publicada' : 'peças publicadas'}
+              {eixo.problemas_de_origem} {eixo.problemas_de_origem === 1 ? 'problema' : 'problemas'}{' '}
+              de origem · {eixo.publicadas}{' '}
+              {eixo.publicadas === 1 ? 'peça publicada' : 'peças publicadas'}
               {eixo.na_fila > 0 ? ` · ${eixo.na_fila} na fila` : ''}
             </span>
             {descoberto ? (
@@ -411,10 +411,7 @@ export default function PaginaDivulgacao(): JSX.Element {
                 {RotuloRedeSocial[publicacao.rede]}
               </span>
               <span
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs',
-                  CLASSE_STATUS[publicacao.status],
-                )}
+                className={cn('rounded-full px-2 py-0.5 text-xs', CLASSE_STATUS[publicacao.status])}
               >
                 {RotuloStatusPublicacao[publicacao.status]}
               </span>

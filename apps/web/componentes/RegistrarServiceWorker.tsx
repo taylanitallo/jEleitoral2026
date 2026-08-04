@@ -27,7 +27,9 @@ export function RegistrarServiceWorker(): null {
         // sistema funciona normalmente com rede, que é a situação da maioria
         // dos usuários. Quem perde é só o offline, e avisar no console é o
         // suficiente — não há ação do usuário que resolva.
-        console.warn('[jEleitoral] Service worker não registrado; o modo offline fica indisponível.');
+        console.warn(
+          '[jEleitoral] Service worker não registrado; o modo offline fica indisponível.',
+        );
       });
     };
 

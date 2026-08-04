@@ -67,10 +67,7 @@ function CartaoSugestao({
       <div className="flex flex-wrap items-center gap-2">
         <TarjaGeradoPorIa />
         <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs',
-            CLASSE_PRIORIDADE[sugestao.prioridade],
-          )}
+          className={cn('rounded-full px-2 py-0.5 text-xs', CLASSE_PRIORIDADE[sugestao.prioridade])}
         >
           {sugestao.prioridade === 'ALTA'
             ? 'Prioridade alta'
@@ -143,9 +140,7 @@ function CartaoSugestao({
           carregando={salvando}
           onClick={() => {
             definirSalvando(true);
-            void aoAceitar({ ...sugestao, titulo, sintese }).finally(() =>
-              definirSalvando(false),
-            );
+            void aoAceitar({ ...sugestao, titulo, sintese }).finally(() => definirSalvando(false));
           }}
         >
           <Check className="size-3.5" aria-hidden="true" />
@@ -194,7 +189,9 @@ export default function PaginaNarrativa(): JSX.Element {
       });
       definirSugestoes(resposta.eixos);
       if (resposta.eixos.length === 0) {
-        definirErroIa('A IA não encontrou base suficiente. Registre mais problemas no diagnóstico.');
+        definirErroIa(
+          'A IA não encontrou base suficiente. Registre mais problemas no diagnóstico.',
+        );
       }
     } catch (falha) {
       definirErroIa(
@@ -292,9 +289,7 @@ export default function PaginaNarrativa(): JSX.Element {
               key={sugestao.titulo}
               sugestao={sugestao}
               aoAceitar={adotar}
-              aoDescartar={() =>
-                definirSugestoes((atuais) => atuais.filter((s) => s !== sugestao))
-              }
+              aoDescartar={() => definirSugestoes((atuais) => atuais.filter((s) => s !== sugestao))}
             />
           ))}
         </section>

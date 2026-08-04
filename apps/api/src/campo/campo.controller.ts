@@ -41,7 +41,6 @@ export class CampoController {
     private readonly sincronizacao: SincronizacaoOfflineService,
   ) {}
 
-
   /**
    * Tudo o que a tela de entrevista precisa saber antes da primeira pergunta.
    *
@@ -136,7 +135,6 @@ export class CampoController {
       };
     });
   }
-
 
   /**
    * Resolve o domicílio onde a entrevista acontece, criando o que faltar.

@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Module, Param, Post, Put, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Module,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
@@ -103,13 +114,8 @@ export class PlanejamentoController {
 
   @Get('areas')
   @ExigePermissao('planejamento.ler')
-  async listarAreas(
-    @Claims() claims: ClaimsUsuario,
-    @Query() consulta: unknown,
-  ): Promise<Area[]> {
-    const p = z
-      .object({ idCampanha: Uuid, natureza: NaturezaArea.optional() })
-      .parse(consulta);
+  async listarAreas(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<Area[]> {
+    const p = z.object({ idCampanha: Uuid, natureza: NaturezaArea.optional() }).parse(consulta);
 
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query<Area>(
@@ -305,7 +311,6 @@ export class PlanejamentoController {
       return { removido: (resultado.rowCount ?? 0) > 0 };
     });
   }
-
 
   // --- Diagnostico agregado para a IA ----------------------------------------
 

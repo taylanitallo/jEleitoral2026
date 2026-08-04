@@ -3,12 +3,7 @@
 import { Plus, Target } from 'lucide-react';
 import { useState } from 'react';
 import { Botao, EstadoCarregando, EstadoVazio, cn } from '@jeleitoral/ui';
-import {
-  NaturezaArea,
-  Prioridade,
-  RotuloNaturezaArea,
-  RotuloPrioridade,
-} from '@jeleitoral/tipos';
+import { NaturezaArea, Prioridade, RotuloNaturezaArea, RotuloPrioridade } from '@jeleitoral/tipos';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { ErroDaApi, api } from '@/lib/api';
 import { useListagem } from '@/lib/useListagem';

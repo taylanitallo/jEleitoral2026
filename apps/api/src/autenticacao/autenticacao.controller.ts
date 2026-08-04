@@ -255,7 +255,6 @@ export class AutenticacaoController {
     return inscricao;
   }
 
-
   /**
    * Renova a sessão a partir do cookie de renovação.
    *

@@ -76,6 +76,7 @@ sobe e nega tudo:
    de e-mail inteiro. Colocá-lo em `false` derruba o login com e-mail e senha
    ("Email logins are disabled"). Quem barra autocadastro é o `enable_signup` da
    seção `[auth]`.
+
 2. **`SEGREDO_HMAC_INDICE` no ambiente da API.** É dele que sai o índice de
    busca sobre CPF e título criptografados.
 

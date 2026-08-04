@@ -1,11 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "preserve",
     "allowJs": true,
     "noEmit": true,
@@ -18,18 +14,10 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@jeleitoral/tipos": [
-        "../../pacotes/tipos/src/index.ts"
-      ],
-      "@jeleitoral/ui": [
-        "../../pacotes/ui/src/index.ts"
-      ],
-      "@jeleitoral/utilitarios": [
-        "../../pacotes/utilitarios/src/index.ts"
-      ]
+      "@/*": ["./*"],
+      "@jeleitoral/tipos": ["../../pacotes/tipos/src/index.ts"],
+      "@jeleitoral/ui": ["../../pacotes/ui/src/index.ts"],
+      "@jeleitoral/utilitarios": ["../../pacotes/utilitarios/src/index.ts"]
     }
   },
   "include": [
@@ -39,7 +27,5 @@
     ".next/types/**/*.ts",
     ".next-local/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

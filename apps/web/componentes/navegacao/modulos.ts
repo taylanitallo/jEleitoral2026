@@ -60,9 +60,7 @@ export const GRUPOS: GrupoModulos[] = [
     id: 'campo',
     rotulo: 'Campo',
     icone: ClipboardList,
-    itens: [
-      { href: '/campo/entrevista', rotulo: 'Entrevista', permissao: 'campo.gerenciar' },
-    ],
+    itens: [{ href: '/campo/entrevista', rotulo: 'Entrevista', permissao: 'campo.gerenciar' }],
   },
   {
     id: 'planejamento',
@@ -125,9 +123,7 @@ export const GRUPOS: GrupoModulos[] = [
     id: 'relatorios',
     rotulo: 'Relatórios',
     icone: FileBarChart,
-    itens: [
-      { href: '/relatorios', rotulo: 'Exportações', permissao: 'relatorios.exportar' },
-    ],
+    itens: [{ href: '/relatorios', rotulo: 'Exportações', permissao: 'relatorios.exportar' }],
   },
 ];
 

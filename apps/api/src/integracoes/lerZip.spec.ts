@@ -6,7 +6,9 @@ import { escolherCsvDaUf, lerZip, pareceZip, type EntradaZip } from './lerZip.js
  * Monta um ZIP de verdade, com diretório central, para exercitar o leitor sem
  * depender de arquivo binário versionado — que ninguém saberia regenerar.
  */
-function montarZip(arquivos: Array<{ nome: string; conteudo: string; comprimir?: boolean }>): Buffer {
+function montarZip(
+  arquivos: Array<{ nome: string; conteudo: string; comprimir?: boolean }>,
+): Buffer {
   const locais: Buffer[] = [];
   const centrais: Buffer[] = [];
   let deslocamento = 0;
@@ -121,8 +123,8 @@ describe('escolherCsvDaUf', () => {
   });
 
   it('avisa quando o ZIP não tem CSV nenhum', () => {
-    expect(() => escolherCsvDaUf([{ nome: 'leiame.txt', conteudo: Buffer.alloc(0) }], 'CE')).toThrow(
-      /não contém CSV/,
-    );
+    expect(() =>
+      escolherCsvDaUf([{ nome: 'leiame.txt', conteudo: Buffer.alloc(0) }], 'CE'),
+    ).toThrow(/não contém CSV/);
   });
 });

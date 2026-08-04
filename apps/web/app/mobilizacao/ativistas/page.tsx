@@ -3,11 +3,7 @@
 import { UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Botao, EstadoCarregando, EstadoVazio, cn } from '@jeleitoral/ui';
-import {
-  PapelAtivista,
-  RotuloPapelAtivista,
-  type PaginaDe,
-} from '@jeleitoral/tipos';
+import { PapelAtivista, RotuloPapelAtivista, type PaginaDe } from '@jeleitoral/tipos';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { Tabela, type Coluna } from '@/componentes/cadastro/Tabela';
 import { ErroDaApi, api } from '@/lib/api';
@@ -187,7 +183,11 @@ export default function PaginaAtivistas(): JSX.Element {
             />
           </Campo>
 
-          <Campo id="telefone" rotulo="Telefone" dica="Como a coordenação vai chamar para as ações.">
+          <Campo
+            id="telefone"
+            rotulo="Telefone"
+            dica="Como a coordenação vai chamar para as ações."
+          >
             <input
               id="telefone"
               className={classeControle}

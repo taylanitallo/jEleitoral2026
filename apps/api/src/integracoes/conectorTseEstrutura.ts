@@ -110,7 +110,8 @@ export class ConectorTseEstrutura implements ConectorExterno {
              from public.municipios where id_estado = $1`,
           [idEstado],
         );
-        for (const municipio of municipios) municipiosPorNome.set(municipio.nome, municipio.id_ibge);
+        for (const municipio of municipios)
+          municipiosPorNome.set(municipio.nome, municipio.id_ibge);
 
         const naoEncontrados = new Set<string>();
 

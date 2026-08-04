@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Module, Param, Post, Put, Query, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Module,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
@@ -209,7 +220,9 @@ export class MobilizacaoController {
     @Req() requisicao: Request,
   ): Promise<{ alterado: boolean }> {
     const idAtivista = Uuid.parse(id);
-    const entrada = EntradaAtivista.partial().extend({ ativo: z.boolean().optional() }).parse(corpo);
+    const entrada = EntradaAtivista.partial()
+      .extend({ ativo: z.boolean().optional() })
+      .parse(corpo);
 
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const resultado = await conexao.query(

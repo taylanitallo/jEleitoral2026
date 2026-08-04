@@ -61,7 +61,11 @@ export function GraficoTemas({ dados }: { dados: TemaAgregado[] }): JSX.Element 
   return (
     <div className="w-full" style={{ height: Math.max(200, linhas.length * 34 + 40) }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={linhas} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+        <BarChart
+          data={linhas}
+          layout="vertical"
+          margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+        >
           <CartesianGrid horizontal={false} stroke="hsl(var(--borda))" />
           <XAxis
             type="number"

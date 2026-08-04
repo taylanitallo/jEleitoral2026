@@ -9,13 +9,13 @@ real da implementação — inclusive o que ainda não existe.
 
 ## 1. Decisões fechadas na Fase 0
 
-| #   | Decisão                      | Escolha                                           | Consequência aceita                                                 |
-| --- | ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| #   | Decisão                                      | Escolha                                           | Consequência aceita                                                   |
+| --- | -------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
 | 1   | ~~Escopo × prazo~~ **revisto em 04/08/2026** | Ordem por "o que bloqueia a equipe ir à rua"      | Alvo: campo operando até o fim de agosto, para o pleito de 04/10/2026 |
-| 2   | Candidatos 2026              | CKAN CSV primário, DivulgaCandContas complementar | Menos frescor durante a janela de registro, muito mais estabilidade |
-| 3   | Volume de ETL                | Sob demanda por UF das campanhas ativas           | Onboarding de nova UF exige uma carga incremental                   |
-| 4   | Inegociável no 1º entregável | Offline-first no formulário de campo              | Custo maior na Fase 6, retrofit evitado                             |
-| 5   | Isolamento multi-tenant      | RLS por `organizacoes`                            | Migrations rodam uma vez; consultas federais são naturais           |
+| 2   | Candidatos 2026                              | CKAN CSV primário, DivulgaCandContas complementar | Menos frescor durante a janela de registro, muito mais estabilidade   |
+| 3   | Volume de ETL                                | Sob demanda por UF das campanhas ativas           | Onboarding de nova UF exige uma carga incremental                     |
+| 4   | Inegociável no 1º entregável                 | Offline-first no formulário de campo              | Custo maior na Fase 6, retrofit evitado                               |
+| 5   | Isolamento multi-tenant                      | RLS por `organizacoes`                            | Migrations rodam uma vez; consultas federais são naturais             |
 
 ## 2. Isolamento multi-tenant
 
@@ -176,6 +176,7 @@ Ordenadas por quanto bloqueiam o uso real.
    `verificar:ambiente` agora prova o acoplamento que importa: o HMAC calculado
    no banco tem de bater com o calculado em TypeScript, senão o entrevistado é
    gravado com um índice e procurado com outro.
+
 3. **Autenticação: falta só o convite.** O registro anterior ("não implementada")
    estava errado e custou uma reavaliação de prazo. O que **existe e funciona**:
    tela de login, MFA/TOTP com inscrição pelo QR no primeiro acesso, cookies
@@ -192,6 +193,7 @@ Ordenadas por quanto bloqueiam o uso real.
    e-mails por hora, tornaria o cadastro de vinte entrevistadores um trabalho de
    dez horas. Por ora a senha inicial é exibida uma vez ao administrador, que a
    repassa.
+
 4. **O aplicativo de campo não abre sem rede.** A fila offline (`filaOffline.ts`)
    está completa e testada, mas **não existe service worker nem manifest** — não
    há sequer `apps/web/public/`. O app shell vem do servidor a cada visita, então
@@ -214,7 +216,7 @@ Ordenadas por quanto bloqueiam o uso real.
 9. **Telas de administração** — território, candidatos, financeiro, artes,
    metas, equipes, perfis e backoffice existem só como API.
 10. **Notificação por e-mail** — na concessão de acesso de suporte e na conclusão
-   de exportação assíncrona. Depende de serviço de envio inexistente.
+    de exportação assíncrona. Depende de serviço de envio inexistente.
 11. **CNEFE** — conector opcional de endereços do Censo 2022, nunca iniciado.
 
 ### Riscos conhecidos

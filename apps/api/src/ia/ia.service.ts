@@ -257,7 +257,6 @@ ${JSON.stringify(entrada.agregado, null, 2)}`,
     };
   }
 
-
   /**
    * Legendas de rede social a partir de um eixo narrativo.
    *
@@ -309,8 +308,10 @@ ${JSON.stringify(entrada.agregado, null, 2)}`,
           `Eixo: ${entrada.eixo.titulo}
 ${entrada.eixo.sintese}
 ` +
-          (entrada.eixo.publicoAlvo ? `Público: ${entrada.eixo.publicoAlvo}
-` : '') +
+          (entrada.eixo.publicoAlvo
+            ? `Público: ${entrada.eixo.publicoAlvo}
+`
+            : '') +
           (entrada.eixo.mensagens.length > 0
             ? `Mensagens-chave:
 ${entrada.eixo.mensagens.map((m) => `- ${m}`).join('\n')}

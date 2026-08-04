@@ -23,7 +23,9 @@ import { config as carregarEnvDaRaiz } from 'dotenv';
 // O .env mora na RAIZ do monorepo, e o vitest roda com cwd em apps/api. No CI
 // as variaveis ja vem do ambiente e o arquivo nao existe — o dotenv nao faz
 // nada, sem erro.
-carregarEnvDaRaiz({ path: resolverCaminho(paraCaminho(new URL('.', import.meta.url)), '../../../.env') });
+carregarEnvDaRaiz({
+  path: resolverCaminho(paraCaminho(new URL('.', import.meta.url)), '../../../.env'),
+});
 
 const PAPEL_TESTE = 'testador_rls';
 

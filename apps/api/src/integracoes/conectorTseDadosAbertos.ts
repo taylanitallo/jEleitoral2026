@@ -177,7 +177,11 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
         }
 
         agregado.total += totalEleitores;
-        somar(agregado.faixaEtaria, String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO'), totalEleitores);
+        somar(
+          agregado.faixaEtaria,
+          String(linha['DS_FAIXA_ETARIA'] ?? 'NAO_INFORMADO'),
+          totalEleitores,
+        );
         somar(agregado.genero, String(linha['DS_GENERO'] ?? 'NAO_INFORMADO'), totalEleitores);
         somar(
           agregado.escolaridade,
@@ -362,9 +366,7 @@ export class ConectorTseDadosAbertos implements ConectorExterno {
     // O catálogo CKAN anuncia estes recursos como CSV, mas entrega ZIP. Decidir
     // pelos bytes, e não pela extensão da URL nem pelo `format` do catálogo, é o
     // que evita depender de o TSE ser coerente.
-    const conteudo = pareceZip(bytes)
-      ? escolherCsvDaUf(lerZip(bytes), uf ?? '').conteudo
-      : bytes;
+    const conteudo = pareceZip(bytes) ? escolherCsvDaUf(lerZip(bytes), uf ?? '').conteudo : bytes;
 
     /*
      * Percorre linha a linha sobre o Buffer, sem transformar o arquivo inteiro

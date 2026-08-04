@@ -74,7 +74,12 @@ export default function PaginaUsoDeIa(): JSX.Element {
       render: (l) => ROTULO_FUNCIONALIDADE[l.funcionalidade] ?? l.funcionalidade,
     },
     { chave: 'provedor', rotulo: 'Provedor', render: (l) => l.provedor },
-    { chave: 'chamadas', rotulo: 'Chamadas', numerico: true, render: (l) => numero.format(l.chamadas) },
+    {
+      chave: 'chamadas',
+      rotulo: 'Chamadas',
+      numerico: true,
+      render: (l) => numero.format(l.chamadas),
+    },
     {
       chave: 'falhas',
       rotulo: 'Falhas',
@@ -150,9 +155,7 @@ export default function PaginaUsoDeIa(): JSX.Element {
       </section>
 
       {dados.porFuncionalidade.length === 0 ? (
-        <p className="text-sm text-[hsl(var(--texto-fraco))]">
-          Nenhuma chamada de IA neste mês.
-        </p>
+        <p className="text-sm text-[hsl(var(--texto-fraco))]">Nenhuma chamada de IA neste mês.</p>
       ) : (
         <Tabela
           colunas={colunas}

@@ -1,12 +1,7 @@
 import { Body, Controller, Get, Module, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
-import {
-  ClaimsUsuario,
-  RedeSocial,
-  StatusPublicacao,
-  Uuid,
-} from '@jeleitoral/tipos';
+import { ClaimsUsuario, RedeSocial, StatusPublicacao, Uuid } from '@jeleitoral/tipos';
 import { ExigePermissao } from '../autenticacao/autenticacao.guard.js';
 import { Claims } from '../autenticacao/claimsUsuario.decorator.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
@@ -54,9 +49,7 @@ class DivulgacaoController {
   @Get('publicacoes')
   @ExigePermissao('divulgacao.ler')
   async listar(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
-    const p = z
-      .object({ idCampanha: Uuid, status: StatusPublicacao.optional() })
-      .parse(consulta);
+    const p = z.object({ idCampanha: Uuid, status: StatusPublicacao.optional() }).parse(consulta);
 
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query(

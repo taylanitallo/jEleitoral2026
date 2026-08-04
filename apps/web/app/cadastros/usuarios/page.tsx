@@ -173,8 +173,12 @@ export default function PaginaUsuarios(): JSX.Element {
             Acesso criado para {credencial.nome}. Anote agora — esta senha não será exibida de novo.
           </p>
           <div className="flex flex-wrap items-center gap-2 font-mono text-sm">
-            <span className="rounded bg-[hsl(var(--superficie))] px-2 py-1">{credencial.email}</span>
-            <span className="rounded bg-[hsl(var(--superficie))] px-2 py-1">{credencial.senha}</span>
+            <span className="rounded bg-[hsl(var(--superficie))] px-2 py-1">
+              {credencial.email}
+            </span>
+            <span className="rounded bg-[hsl(var(--superficie))] px-2 py-1">
+              {credencial.senha}
+            </span>
             <Botao
               variante="sutil"
               tamanho="pequeno"

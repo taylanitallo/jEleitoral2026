@@ -150,11 +150,7 @@ function Problemas({ idDiagnostico, aoMudar }: { idDiagnostico: string; aoMudar:
             </select>
           </Campo>
 
-          <Campo
-            id="relatos"
-            rotulo="Quantas pessoas citaram"
-            dica="É o peso do tema no agregado."
-          >
+          <Campo id="relatos" rotulo="Quantas pessoas citaram" dica="É o peso do tema no agregado.">
             <input
               id="relatos"
               className={classeControle}

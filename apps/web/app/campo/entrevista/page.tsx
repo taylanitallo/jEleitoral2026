@@ -112,8 +112,8 @@ export default function PaginaEntrevista(): JSX.Element {
     return (
       <main className="mx-auto max-w-2xl px-4 py-6">
         <p role="alert" className="text-sm text-[hsl(var(--perigo))]">
-          Nenhum termo de consentimento vigente nesta organização. A coleta não pode começar sem
-          ele — fale com o coordenador.
+          Nenhum termo de consentimento vigente nesta organização. A coleta não pode começar sem ele
+          — fale com o coordenador.
         </p>
       </main>
     );

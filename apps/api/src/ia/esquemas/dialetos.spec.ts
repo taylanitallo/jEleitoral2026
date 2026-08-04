@@ -132,13 +132,21 @@ describe('os dois dialetos descrevem a mesma coisa', () => {
     const chavesAnthropic = Object.keys(
       (paraAnthropic(ESQUEMA)['properties'] as Record<string, unknown>)!,
     );
-    const chavesGemini = Object.keys((paraGemini(ESQUEMA)['properties'] as Record<string, unknown>)!);
+    const chavesGemini = Object.keys(
+      (paraGemini(ESQUEMA)['properties'] as Record<string, unknown>)!,
+    );
     expect(chavesAnthropic.sort()).toEqual(chavesGemini.sort());
   });
 
   it('preservam a enumeração', () => {
-    const daAnthropic = (paraAnthropic(ESQUEMA)['properties'] as Record<string, Record<string, unknown>>)!;
-    const doGemini = (paraGemini(ESQUEMA)['properties'] as Record<string, Record<string, unknown>>)!;
+    const daAnthropic = (paraAnthropic(ESQUEMA)['properties'] as Record<
+      string,
+      Record<string, unknown>
+    >)!;
+    const doGemini = (paraGemini(ESQUEMA)['properties'] as Record<
+      string,
+      Record<string, unknown>
+    >)!;
     expect(daAnthropic['prioridade']!['enum']).toEqual(['ALTA', 'MEDIA', 'BAIXA']);
     expect(doGemini['prioridade']!['enum']).toEqual(['ALTA', 'MEDIA', 'BAIXA']);
   });
