@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AgendaModule } from './agenda/agenda.module.js';
 import { ArtesModule } from './artes/artes.module.js';
 import {
   AutenticacaoController,
@@ -43,6 +44,7 @@ import { SaudeController } from './saude/saude.controller.js';
     CandidatosModule,
     MetasModule,
     MobilizacaoModule,
+    AgendaModule,
     TerritorioModule,
     FinanceiroModule,
     ProvedorModule,

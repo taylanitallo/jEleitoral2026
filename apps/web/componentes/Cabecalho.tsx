@@ -2,6 +2,7 @@
 
 import {
   Building2,
+  CalendarDays,
   ClipboardList,
   FileBarChart,
   Image,
@@ -46,6 +47,7 @@ const ITENS = [
     permissao: 'campanhas.gerenciar',
   },
   { href: '/cadastros/usuarios', rotulo: 'Equipe', icone: Users, permissao: 'usuarios.ler' },
+  { href: '/agenda', rotulo: 'Agenda', icone: CalendarDays, permissao: 'agenda.ler' },
   {
     href: '/mobilizacao/ativistas',
     rotulo: 'Militância',

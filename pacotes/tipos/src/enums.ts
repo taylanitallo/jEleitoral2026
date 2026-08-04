@@ -395,3 +395,73 @@ export const RotuloTipoComite: Record<TipoComite, string> = {
   TEMATICO: 'Temático',
   MOVEL: 'Móvel',
 };
+
+// --- Agenda -----------------------------------------------------------------
+
+/**
+ * Espelha `public.tipo_atividade` (0021).
+ *
+ * Uma agenda só para cronograma, encontro com candidato, visita de
+ * conscientização e capacitação: são todos evento com data, local, responsável
+ * e presença. O que muda entre eles cabe em colunas anuláveis.
+ */
+export const TipoAtividade = z.enum([
+  'REUNIAO_EQUIPE',
+  'ENCONTRO_CANDIDATO',
+  'VISITA_CONSCIENTIZACAO',
+  'CAPACITACAO',
+  'REUNIAO_COMITE',
+  'MUTIRAO',
+  'CARREATA',
+  'EVENTO_PUBLICO',
+  'AGENDA_EXTERNA',
+  'OUTRA',
+]);
+export type TipoAtividade = z.infer<typeof TipoAtividade>;
+
+export const RotuloTipoAtividade: Record<TipoAtividade, string> = {
+  REUNIAO_EQUIPE: 'Reunião de equipe',
+  ENCONTRO_CANDIDATO: 'Encontro com candidato',
+  VISITA_CONSCIENTIZACAO: 'Visita de conscientização',
+  CAPACITACAO: 'Capacitação',
+  REUNIAO_COMITE: 'Reunião de comitê',
+  MUTIRAO: 'Mutirão',
+  CARREATA: 'Carreata',
+  EVENTO_PUBLICO: 'Evento público',
+  AGENDA_EXTERNA: 'Agenda externa',
+  OUTRA: 'Outra',
+};
+
+export const StatusAtividade = z.enum([
+  'PLANEJADA',
+  'CONFIRMADA',
+  'REALIZADA',
+  'CANCELADA',
+  'ADIADA',
+]);
+export type StatusAtividade = z.infer<typeof StatusAtividade>;
+
+export const RotuloStatusAtividade: Record<StatusAtividade, string> = {
+  PLANEJADA: 'Planejada',
+  CONFIRMADA: 'Confirmada',
+  REALIZADA: 'Realizada',
+  CANCELADA: 'Cancelada',
+  ADIADA: 'Adiada',
+};
+
+export const SituacaoParticipante = z.enum([
+  'CONVIDADO',
+  'CONFIRMADO',
+  'PRESENTE',
+  'AUSENTE',
+  'JUSTIFICADO',
+]);
+export type SituacaoParticipante = z.infer<typeof SituacaoParticipante>;
+
+export const RotuloSituacaoParticipante: Record<SituacaoParticipante, string> = {
+  CONVIDADO: 'Convidado',
+  CONFIRMADO: 'Confirmado',
+  PRESENTE: 'Presente',
+  AUSENTE: 'Ausente',
+  JUSTIFICADO: 'Falta justificada',
+};
