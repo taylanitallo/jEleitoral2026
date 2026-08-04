@@ -23,6 +23,7 @@ import { ProjecaoModule } from './projecao/projecao.module.js';
 import { RelatoriosModule } from './relatorios/relatorios.module.js';
 import { ProvedorModule } from './provedor/provedor.module.js';
 import { TerritorioModule } from './territorio/territorio.module.js';
+import { UsuariosController } from './usuarios/usuarios.controller.js';
 import { SaudeController } from './saude/saude.controller.js';
 
 @Module({
@@ -47,7 +48,7 @@ import { SaudeController } from './saude/saude.controller.js';
     ArtesModule,
     RelatoriosModule,
   ],
-  controllers: [SaudeController, CampanhasController, AutenticacaoController],
+  controllers: [SaudeController, CampanhasController, UsuariosController, AutenticacaoController],
   providers: [
     BancoService,
     AuditoriaService,

@@ -182,11 +182,16 @@ Ordenadas por quanto bloqueiam o uso real.
    `httpOnly` + `SameSite=Strict`, middleware que protege as rotas preservando o
    destino, e `GET /autenticacao/sessao` alimentando `useSessao`.
 
-   O que falta de verdade é **não haver caminho para criar usuário pela
-   aplicação**: não existe controller de `usuarios` nem fluxo de convite, e a
-   única porta é `scripts/semearOrganizacao.mjs` com a chave de serviço. Uma
-   campanha com 20 entrevistadores precisa que o coordenador cadastre gente
-   sozinho — hoje isso exige alguém com acesso ao terminal e à chave de serviço.
+   **Resolvido em 04/08/2026:** há `UsuariosController` e a tela
+   `/cadastros/usuarios`. O administrador cadastra a equipe, troca perfil,
+   ativa/desativa e gera nova senha, tudo pela aplicação.
+
+   O que **permanece aberto** é o convite por link: `public.convites` existe no
+   banco, com hash de token e expiração, e **continua sem uso**. Ele depende de
+   entrega de e-mail, que não existe — e o limite padrão do Supabase, de 2
+   e-mails por hora, tornaria o cadastro de vinte entrevistadores um trabalho de
+   dez horas. Por ora a senha inicial é exibida uma vez ao administrador, que a
+   repassa.
 4. **O aplicativo de campo não abre sem rede.** A fila offline (`filaOffline.ts`)
    está completa e testada, mas **não existe service worker nem manifest** — não
    há sequer `apps/web/public/`. O app shell vem do servidor a cada visita, então
