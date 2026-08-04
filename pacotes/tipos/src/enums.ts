@@ -579,3 +579,43 @@ export const RotuloStatusAcao: Record<StatusAcao, string> = {
 
 export const StatusPlanejamento = z.enum(['RASCUNHO', 'VIGENTE', 'ENCERRADO']);
 export type StatusPlanejamento = z.infer<typeof StatusPlanejamento>;
+
+export const RedeSocial = z.enum([
+  'INSTAGRAM',
+  'FACEBOOK',
+  'WHATSAPP',
+  'TIKTOK',
+  'YOUTUBE',
+  'X',
+  'SITE',
+  'OUTRA',
+]);
+export type RedeSocial = z.infer<typeof RedeSocial>;
+
+export const RotuloRedeSocial: Record<RedeSocial, string> = {
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  WHATSAPP: 'WhatsApp',
+  TIKTOK: 'TikTok',
+  YOUTUBE: 'YouTube',
+  X: 'X',
+  SITE: 'Site',
+  OUTRA: 'Outra',
+};
+
+export const StatusPublicacao = z.enum([
+  'RASCUNHO',
+  'EM_APROVACAO',
+  'APROVADA',
+  'PUBLICADA',
+  'CANCELADA',
+]);
+export type StatusPublicacao = z.infer<typeof StatusPublicacao>;
+
+export const RotuloStatusPublicacao: Record<StatusPublicacao, string> = {
+  RASCUNHO: 'Rascunho',
+  EM_APROVACAO: 'Em aprovação',
+  APROVADA: 'Aprovada',
+  PUBLICADA: 'Publicada',
+  CANCELADA: 'Cancelada',
+};

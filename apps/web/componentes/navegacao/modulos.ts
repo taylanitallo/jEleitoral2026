@@ -95,6 +95,7 @@ export const GRUPOS: GrupoModulos[] = [
     itens: [
       { href: '/mobilizacao/ativistas', rotulo: 'Militância', permissao: 'mobilizacao.ler' },
       { href: '/mobilizacao/comites', rotulo: 'Comitês', permissao: 'mobilizacao.ler' },
+      { href: '/divulgacao', rotulo: 'Divulgação', permissao: 'divulgacao.ler' },
     ],
   },
   {
@@ -140,6 +141,7 @@ export const ICONE_POR_ROTA: Record<string, LucideIcon> = {
   '/agenda': CalendarDays,
   '/mobilizacao/ativistas': Megaphone,
   '/mobilizacao/comites': Home,
+  '/divulgacao': Megaphone,
   '/cadastros/candidatos': UserSquare2,
   '/cadastros/territorio': Map,
   '/cadastros/metas': Target,

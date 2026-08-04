@@ -235,3 +235,35 @@ export const EixosNarrativosSugeridos = z.object({
     .max(6),
 });
 export type EixosNarrativosSugeridos = z.infer<typeof EixosNarrativosSugeridos>;
+
+/**
+ * Legendas para uma peça de rede social, a partir de um eixo narrativo.
+ *
+ * Três variações, e não uma: a primeira sugestão quase nunca é a escolhida, e
+ * pedir de novo custa outra chamada. Nenhuma delas menciona pessoa — o eixo já
+ * chega sem nome, e a instrução reforça.
+ */
+export const EsquemaNeutroLegendas = objeto({
+  legendas: lista(
+    objeto({
+      texto: texto(),
+      tom: texto({ enumeracao: ['DIRETO', 'PROXIMO', 'FIRME'] }),
+      chamadaAcao: texto(),
+      sugestaoHashtags: lista(texto()),
+    }),
+  ),
+});
+
+export const LegendasSugeridas = z.object({
+  legendas: z
+    .array(
+      z.object({
+        texto: z.string().min(10).max(2200),
+        tom: z.enum(['DIRETO', 'PROXIMO', 'FIRME']),
+        chamadaAcao: z.string().max(200),
+        sugestaoHashtags: z.array(z.string().max(40)).max(8),
+      }),
+    )
+    .max(3),
+});
+export type LegendasSugeridas = z.infer<typeof LegendasSugeridas>;

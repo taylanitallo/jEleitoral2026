@@ -18,6 +18,7 @@ import { MobilizacaoModule } from './mobilizacao/mobilizacao.module.js';
 import { FiltroExcecoes } from './comum/filtroExcecoes.js';
 import { InterceptorCorrelacao } from './comum/interceptorCorrelacao.js';
 import { DiagnosticoModule } from './diagnostico/diagnostico.module.js';
+import { DivulgacaoModule } from './divulgacao/divulgacao.module.js';
 import { FinanceiroModule } from './financeiro/financeiro.module.js';
 import { IaModule } from './ia/ia.module.js';
 import { IntegracoesModule } from './integracoes/integracoes.module.js';
@@ -49,6 +50,7 @@ import { SaudeController } from './saude/saude.controller.js';
     AgendaModule,
     PlanejamentoModule,
     DiagnosticoModule,
+    DivulgacaoModule,
     TerritorioModule,
     FinanceiroModule,
     ProvedorModule,

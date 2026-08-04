@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Module, Post } from '@nestjs/common';
+import { Body, Controller, Get, Module, NotFoundException, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { ClaimsUsuario, Uuid } from '@jeleitoral/tipos';
@@ -39,7 +39,10 @@ const EntradaConsulta = z.object({
 @Controller('ia')
 @Throttle({ curta: { limit: 2, ttl: 1000 }, longa: { limit: 30, ttl: 60_000 } })
 class IaController {
-  constructor(private readonly ia: IaService) {}
+  constructor(
+    private readonly ia: IaService,
+    private readonly banco: BancoService,
+  ) {}
 
   @Post('diagnostico')
   @ExigePermissao('ia.usar')
@@ -78,6 +81,60 @@ class IaController {
   @ExigePermissao('ia.usar')
   async uso(@Claims() claims: ClaimsUsuario): Promise<unknown> {
     return this.ia.resumoDeUso(claims);
+  }
+
+  /**
+   * Legendas a partir de um eixo já adotado.
+   *
+   * O eixo é lido do banco pelo id, e não recebido no corpo: aceitar o texto do
+   * cliente permitiria gerar legenda para um "eixo" que nunca passou por
+   * aprovação — e a tarja de gerado por IA daria a ele a aparência de conteúdo
+   * derivado do plano.
+   */
+  @Post('legendas')
+  @ExigePermissao('divulgacao.gerenciar')
+  async legendas(@Claims() claims: ClaimsUsuario, @Body() corpo: unknown): Promise<unknown> {
+    const entrada = z
+      .object({
+        idEixo: Uuid,
+        rede: z.string().trim().max(20),
+        instrucaoExtra: z.string().trim().max(300).optional(),
+      })
+      .parse(corpo);
+
+    type LinhaEixo = {
+      id_campanha: string;
+      titulo: string;
+      sintese: string;
+      mensagens: string[];
+      publico_alvo: string | null;
+    };
+
+    const eixo = await this.banco.executarComoUsuario<LinhaEixo | null>(
+      claims,
+      async (conexao) => {
+        const { rows } = await conexao.query<LinhaEixo>(
+          `select id_campanha, titulo, sintese, mensagens, publico_alvo
+             from public.eixos_narrativos where id = $1`,
+          [entrada.idEixo],
+        );
+        return rows[0] ?? null;
+      },
+    );
+
+    if (!eixo) throw new NotFoundException('Eixo narrativo não encontrado.');
+
+    return this.ia.gerarLegendas(claims, {
+      idCampanha: eixo.id_campanha,
+      rede: entrada.rede,
+      eixo: {
+        titulo: eixo.titulo,
+        sintese: eixo.sintese,
+        mensagens: eixo.mensagens ?? [],
+        publicoAlvo: eixo.publico_alvo,
+      },
+      instrucaoExtra: entrada.instrucaoExtra,
+    });
   }
 }
 

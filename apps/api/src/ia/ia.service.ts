@@ -3,8 +3,10 @@ import type { ClaimsUsuario } from '@jeleitoral/tipos';
 import {
   Diagnostico,
   EixosNarrativosSugeridos,
+  LegendasSugeridas,
   EsquemaNeutroConsulta,
   EsquemaNeutroEixos,
+  EsquemaNeutroLegendas,
   EsquemaNeutroDiagnostico,
   EsquemaNeutroRevisao,
   InterpretacaoConsulta,
@@ -253,6 +255,80 @@ ${JSON.stringify(entrada.agregado, null, 2)}`,
       advertencia: montarAdvertenciaDeCobertura(entrada.coberturaAmostral),
       geradoPorIa: true,
     };
+  }
+
+
+  /**
+   * Legendas de rede social a partir de um eixo narrativo.
+   *
+   * O eixo é a única entrada: nada de dado de campo, nada de nome. Isso não é
+   * só cautela — é o que mantém a peça alinhada ao discurso, em vez de virar
+   * um texto novo que ninguém aprovou.
+   *
+   * O limite de caracteres é passado por rede porque as plataformas divergem
+   * muito, e uma legenda cortada na publicação perde justamente o fecho.
+   */
+  async gerarLegendas(
+    claims: ClaimsUsuario,
+    entrada: {
+      idCampanha: string;
+      rede: string;
+      eixo: { titulo: string; sintese: string; mensagens: string[]; publicoAlvo: string | null };
+      instrucaoExtra?: string;
+    },
+  ): Promise<{ legendas: LegendasSugeridas['legendas']; geradoPorIa: true }> {
+    const LIMITE_POR_REDE: Record<string, number> = {
+      INSTAGRAM: 2200,
+      FACEBOOK: 2000,
+      WHATSAPP: 1000,
+      TIKTOK: 300,
+      YOUTUBE: 1000,
+      X: 280,
+      SITE: 2000,
+      OUTRA: 1000,
+    };
+    const limite = LIMITE_POR_REDE[entrada.rede] ?? 1000;
+
+    const resposta = await this.executar(claims, {
+      idCampanha: entrada.idCampanha,
+      funcionalidade: 'legenda_publicacao',
+      resumoEntrada: { rede: entrada.rede, limite },
+      pedido: {
+        operacao: 'legenda_publicacao',
+        instrucaoSistema:
+          'Você escreve legendas de rede social para uma campanha eleitoral brasileira. ' +
+          'Responda em português do Brasil. Trabalhe APENAS a partir do eixo narrativo ' +
+          'fornecido: não invente número, não faça afirmação factual sobre adversários, não ' +
+          'prometa obra ou prazo que o eixo não traga, e NÃO cite nome de pessoa. ' +
+          'Não use pedido de voto explícito nem número de urna — a peça pode ser produzida ' +
+          'fora do período eleitoral permitido, e quem publica decide isso. ' +
+          'Escreva três variações de tom diferente, todas dentro do limite de caracteres.',
+        entradaUsuario:
+          `Rede: ${entrada.rede}. Limite: ${limite} caracteres.
+` +
+          `Eixo: ${entrada.eixo.titulo}
+${entrada.eixo.sintese}
+` +
+          (entrada.eixo.publicoAlvo ? `Público: ${entrada.eixo.publicoAlvo}
+` : '') +
+          (entrada.eixo.mensagens.length > 0
+            ? `Mensagens-chave:
+${entrada.eixo.mensagens.map((m) => `- ${m}`).join('\n')}
+`
+            : '') +
+          (entrada.instrucaoExtra ? `Pedido do coordenador: ${entrada.instrucaoExtra}` : ''),
+        maxTokensSaida: 8000,
+        esforco: 'medio',
+        // Legenda não pede raciocínio estendido: é reescrita de um texto que já
+        // existe e já foi aprovado. Ligá-lo dobraria o custo sem ganho.
+        raciocinio: false,
+        esquemaSaida: EsquemaNeutroLegendas,
+        cachearSistema: true,
+      },
+    });
+
+    const sugerido = this.validar(resposta.textoJson, LegendasSugeridas, 'legendas');
+    return { legendas: sugerido.legendas, geradoPorIa: true };
   }
 
   /**
