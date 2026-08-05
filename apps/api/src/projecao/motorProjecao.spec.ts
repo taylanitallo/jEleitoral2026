@@ -235,6 +235,61 @@ describe('advertência', () => {
   });
 });
 
+describe('votosPorEleitor — a base dobrada do Senado', () => {
+  /*
+   * O eleitor cearense declara DOIS senadores, então `declaracoesValidas` vem
+   * dobrado para esse cargo — enquanto `eleitoradoBase` conta pessoas. Sem
+   * dividir, a fração do candidato saía sobre votos e era multiplicada por
+   * eleitores: metade do resultado, em silêncio, para os dois senadores da
+   * chapa.
+   */
+  it('mesma amostra com 2 votos por eleitor projeta o dobro do que projetava', () => {
+    const semCorrecao = projetar(
+      insumos({
+        amostraTamanho: 100,
+        intencoesDoCandidato: intencoes(60),
+        declaracoesValidas: 200,
+      }),
+    );
+    const comCorrecao = projetar(
+      insumos({
+        amostraTamanho: 100,
+        intencoesDoCandidato: intencoes(60),
+        declaracoesValidas: 200,
+        votosPorEleitor: 2,
+      }),
+    );
+    expect(comCorrecao.votosProjetados).toBeCloseTo(semCorrecao.votosProjetados * 2, 0);
+  });
+
+  it('equivale a um cargo de voto único com metade das declarações', () => {
+    // A prova de que a correção converte VOTOS em ELEITORES, e não inventa um
+    // fator arbitrário.
+    const senador = projetar(
+      insumos({
+        amostraTamanho: 100,
+        intencoesDoCandidato: intencoes(60),
+        declaracoesValidas: 200,
+        votosPorEleitor: 2,
+      }),
+    );
+    const votoUnico = projetar(
+      insumos({
+        amostraTamanho: 100,
+        intencoesDoCandidato: intencoes(60),
+        declaracoesValidas: 100,
+      }),
+    );
+    expect(senador.votosProjetados).toBeCloseTo(votoUnico.votosProjetados, 5);
+  });
+
+  it('cargo de voto único não muda de comportamento', () => {
+    const semCampo = projetar(insumos({}));
+    const comUm = projetar(insumos({ votosPorEleitor: 1 }));
+    expect(comUm.votosProjetados).toBe(semCampo.votosProjetados);
+  });
+});
+
 describe('agregar', () => {
   it('soma votos das seções e pondera a confiança pelo eleitorado', () => {
     const secaoPequenaEBoa = projetar(

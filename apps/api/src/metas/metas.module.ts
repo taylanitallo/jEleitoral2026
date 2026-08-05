@@ -62,17 +62,41 @@ export class MetasService {
         prazo: Date | null;
         criado_em: Date;
         realizado: string;
+        apoiadores_no_recorte: string;
         projetado: string | null;
         eleitorado_base: string | null;
       }>(
+        /*
+         * O realizado é do CANDIDATO da meta, e não da campanha.
+         *
+         * Antes contava `entrevistados` com classificação APOIADOR do recorte
+         * inteiro, sem filtrar candidato nem cargo. Numa chapa de seis, os seis
+         * exibiam exatamente o mesmo número — o presidente e o deputado
+         * estadual "realizando" a mesma coisa, o que torna a tela de metas
+         * inútil no exato cenário para o qual ela existe.
+         *
+         * `apoiadores_no_recorte` preserva o número antigo num campo próprio: a
+         * leitura de classificação continua útil, só não é o realizado de
+         * ninguém em particular.
+         */
         `select m.id, m.tipo, m.valor, m.nivel, m.id_referencia, m.prazo, m.criado_em,
+                coalesce((
+                  select count(distinct ent.id_entrevistado)
+                    from public.intencoes_voto i
+                    join public.entrevistas ent on ent.id = i.id_entrevista
+                    join public.entrevistados e on e.id = ent.id_entrevistado
+                   where i.id_candidato = m.id_candidato
+                     and ent.status in ('CONCLUIDA', 'VALIDADA')
+                     and e.anonimizado_em is null
+                     and (m.nivel <> 'SECAO' or e.id_secao::text = m.id_referencia)
+                ), 0) as realizado,
                 coalesce((
                   select count(*) from public.entrevistados e
                    where e.id_campanha = m.id_campanha
                      and e.classificacao = 'APOIADOR'
                      and e.anonimizado_em is null
                      and (m.nivel <> 'SECAO' or e.id_secao::text = m.id_referencia)
-                ), 0) as realizado,
+                ), 0) as apoiadores_no_recorte,
                 p.votos_projetados as projetado,
                 p.eleitorado_base
            from public.metas m
@@ -96,6 +120,9 @@ export class MetasService {
           idReferencia: linha.id_referencia,
           tipo: linha.tipo,
           valor: Number(linha.valor),
+          // O número antigo, preservado: continua sendo a leitura de
+          // classificação do recorte, mas não é o realizado de candidato algum.
+          apoiadoresNoRecorte: Number(linha.apoiadores_no_recorte),
           ...avaliarMeta({
             tipo: linha.tipo as 'VOTOS_ABSOLUTOS' | 'PERCENTUAL',
             valor: Number(linha.valor),

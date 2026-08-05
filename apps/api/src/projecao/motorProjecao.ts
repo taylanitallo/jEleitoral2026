@@ -33,6 +33,17 @@ export interface InsumosProjecao {
   /** Declarações válidas totais (todos os candidatos + brancos/nulos declarados). */
   declaracoesValidas: number;
   /**
+   * Quantos votos cada eleitor dá NESTE cargo. Senador no Ceará: 2.
+   *
+   * Sem isto a projeção de Senador saía pela METADE, e em silêncio.
+   * `declaracoesValidas` conta LINHAS de intenção — duas por eleitor no Senado —
+   * enquanto `eleitoradoBase` conta ELEITORES. A fração resultante era a fatia
+   * do candidato entre os *votos*, e ela era multiplicada pelo número de
+   * *eleitores*. Dividir as declarações por este número devolve a fatia entre
+   * eleitores, que é a base certa.
+   */
+  votosPorEleitor?: number;
+  /**
    * Desempenho do candidato ou do seu partido no mesmo recorte em 2022, como
    * fração dos votos válidos. Ausente quando não há histórico comparável.
    */
@@ -124,6 +135,7 @@ export function projetar(insumos: InsumosProjecao): ResultadoProjecao {
       eleitoradoBase,
       amostraTamanho,
       declaracoesValidas,
+      votosPorEleitor: insumos.votosPorEleitor ?? 1,
       fracaoHistorica: fracaoHistorica ?? null,
       pesoVotoDomicilio: PARAMETROS_PROJECAO.pesoVotoDomicilio,
     } as Record<string, number | string | null>,
@@ -144,7 +156,16 @@ export function projetar(insumos: InsumosProjecao): ResultadoProjecao {
   }
 
   const votosPonderados = somarPonderado(insumos.intencoesDoCandidato);
-  const fracaoAmostra = declaracoesValidas > 0 ? votosPonderados / declaracoesValidas : 0;
+  /*
+   * Declarações convertidas em ELEITORES antes de virar fração.
+   *
+   * Um eleitor cearense declara dois senadores, então `declaracoesValidas` vem
+   * dobrado para esse cargo. Dividir aqui deixa a fração comparável ao
+   * `eleitoradoBase`, que conta pessoas. Para os cargos de voto único o divisor
+   * é 1 e nada muda.
+   */
+  const eleitoresDeclarantes = declaracoesValidas / Math.max(1, insumos.votosPorEleitor ?? 1);
+  const fracaoAmostra = eleitoresDeclarantes > 0 ? votosPonderados / eleitoresDeclarantes : 0;
 
   const amostraUtil =
     amostraTamanho >= PARAMETROS_PROJECAO.amostraMinimaAbsoluta &&
