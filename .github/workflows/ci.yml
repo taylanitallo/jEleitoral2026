@@ -5,6 +5,17 @@ on:
     branches: [main, homologacao]
   pull_request:
     branches: [main, homologacao]
+  # Execução manual, para o único caso em que a aplicação normal não serve:
+  # adotar um banco que já tem o esquema mas cujo registro está incompleto.
+  workflow_dispatch:
+    inputs:
+      adotar_ate:
+        description: >-
+          Marca as migrations ATÉ este número como aplicadas SEM executá-las.
+          Use só ao adotar um banco preexistente (ex.: 0018). Em branco, aplica
+          normalmente.
+        required: false
+        default: ''
 
 # Uma execução por branch: um push novo cancela a anterior.
 concurrency:
@@ -147,7 +158,9 @@ jobs:
     # descartável. Aplicar antes disso seria descobrir o defeito com dados de
     # campo dentro.
     needs: [qualidade, banco]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # O ambiente permite exigir aprovação manual nas configurações do
     # repositório, e é onde o segredo de conexão fica isolado do resto do CI.
     environment: producao
@@ -168,12 +181,21 @@ jobs:
       - name: Aplicar migrations
         env:
           BANCO_URL: ${{ secrets.BANCO_URL_PRODUCAO }}
+          ADOTAR_ATE: ${{ inputs.adotar_ate }}
         run: |
           if [ -z "$BANCO_URL" ]; then
             echo "::warning::BANCO_URL_PRODUCAO não configurado. Migrations NÃO foram aplicadas."
             exit 0
           fi
-          pnpm --filter @jeleitoral/api banco:aplicar
+          # A adoção PULA a execução das migrations até o número informado. É
+          # correta só quando o banco comprovadamente já tem aquele esquema —
+          # daí o aviso, para que a decisão fique registrada no log da execução.
+          if [ -n "$ADOTAR_ATE" ]; then
+            echo "::warning::Adotando migrations até $ADOTAR_ATE sem executá-las."
+            pnpm --filter @jeleitoral/api banco:aplicar -- "--adotar-ate=$ADOTAR_ATE"
+          else
+            pnpm --filter @jeleitoral/api banco:aplicar
+          fi
 
   construir:
     name: Build
