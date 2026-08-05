@@ -223,3 +223,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # O build compilar não prova que a aplicação SOBE: a injeção do Nest é
+      # resolvida em tempo de execução, e um módulo sem `providers` passa por
+      # typecheck, lint, testes e build — e derruba o deploy com "replicas never
+      # became healthy", que não aponta para nada. Sobe o bundle de verdade.
+      - name: A API sobe?
+        run: pnpm --filter @jeleitoral/api verificar:boot

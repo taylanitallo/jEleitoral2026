@@ -269,5 +269,8 @@ class DivulgacaoController {
   }
 }
 
-@Module({ controllers: [DivulgacaoController] })
+@Module({
+  controllers: [DivulgacaoController],
+  providers: [BancoService, AuditoriaService],
+})
 export class DivulgacaoModule {}
