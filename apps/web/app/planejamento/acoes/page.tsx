@@ -306,7 +306,10 @@ export default function PaginaAcoes(): JSX.Element {
                 {RotuloStatusAcao[acao.status]}
               </span>
               <span
-                className={cn('rounded-full px-2 py-0.5 text-xs', CLASSE_PRIORIDADE[acao.prioridade])}
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-xs',
+                  CLASSE_PRIORIDADE[acao.prioridade],
+                )}
               >
                 {RotuloPrioridade[acao.prioridade]}
               </span>
