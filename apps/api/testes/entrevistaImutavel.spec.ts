@@ -94,6 +94,19 @@ describe.skipIf(!URL_BANCO)('imutabilidade e retificação de entrevistas', () =
     );
     criados.usuario = usuario[0]!.id;
 
+    // `municipios`/`estados` só existem depois de `pnpm ibge:sincronizar` — que
+    // roda no banco de desenvolvimento, mas não no banco efêmero do CI. `on
+    // conflict do nothing` cobre os dois casos: cria a referência quando falta,
+    // e não sobrescreve quando o dado real do IBGE já está lá.
+    await cliente.query(
+      `insert into public.estados (id_ibge, sigla, nome, regiao)
+       values (23, 'CE', 'Ceará', 'Nordeste') on conflict (id_ibge) do nothing`,
+    );
+    await cliente.query(
+      `insert into public.municipios (id_ibge, id_estado, nome)
+       values (2304400, 23, 'Fortaleza') on conflict (id_ibge) do nothing`,
+    );
+
     const { rows: bairro } = await cliente.query<{ id: string }>(
       `insert into public.bairros (id_organizacao, id_municipio, nome, origem)
        values ($1, 2304400, 'Bairro de teste', 'USUARIO') returning id`,
