@@ -37,24 +37,64 @@ const DIRETORIO_MIGRATIONS = resolve(
  *
  * Só as migrations a partir da 0017 estão aqui; as anteriores são a base que
  * todo ambiente tem desde a criação.
+ *
+ * **Uma lista por migration, e TODAS precisam existir.** A que cria tabela e
+ * função não pode ser dada por aplicada só porque a tabela está lá: aplicação
+ * interrompida no meio deixa exatamente esse estado, e adotá-la esconderia a
+ * função faltando — que é o que as migrations seguintes chamam.
+ *
+ * A sentinela da 0018 é o ÍNDICE, e não `public.bairros`: a tabela existe desde
+ * a 0005, e apontar para ela daria "aplicada" em qualquer banco. Foi o erro da
+ * primeira versão deste arquivo — o modo de falhar que ele mesmo adverte, já
+ * que diagnóstico errado autoriza pular migration que não rodou.
  */
-const SENTINELA: Record<number, { tipo: 'tabela' | 'coluna' | 'funcao'; alvo: string }> = {
-  18: { tipo: 'tabela', alvo: 'public.bairros' },
-  19: { tipo: 'tabela', alvo: 'public.perfis_padrao' },
-  20: { tipo: 'tabela', alvo: 'public.ativistas' },
-  21: { tipo: 'tabela', alvo: 'public.atividades' },
-  22: { tipo: 'tabela', alvo: 'public.areas_estrategicas' },
-  23: { tipo: 'tabela', alvo: 'public.diagnosticos' },
-  24: { tipo: 'coluna', alvo: 'usos_ia.provedor' },
-  25: { tipo: 'tabela', alvo: 'public.planejamentos' },
-  26: { tipo: 'tabela', alvo: 'public.publicacoes' },
-  27: { tipo: 'coluna', alvo: 'usuarios.claims_invalidos_apos' },
+interface Sentinela {
+  tipo: 'tabela' | 'coluna' | 'funcao';
+  alvo: string;
+}
+
+const SENTINELA: Record<number, Sentinela[]> = {
+  18: [{ tipo: 'tabela', alvo: 'public.bairros_unicidade_idx' }],
+  19: [
+    { tipo: 'tabela', alvo: 'public.perfis_padrao' },
+    { tipo: 'tabela', alvo: 'public.perfil_permissao_padrao' },
+    // A função de que a 0020 em diante dependem. Sem ela, adotar a 0019 faria
+    // as seguintes falharem por um motivo que não aponta para cá.
+    { tipo: 'funcao', alvo: 'public.conceder_permissao_padrao' },
+  ],
+  20: [
+    { tipo: 'tabela', alvo: 'public.ativistas' },
+    { tipo: 'tabela', alvo: 'public.comites' },
+  ],
+  21: [
+    { tipo: 'tabela', alvo: 'public.atividades' },
+    { tipo: 'tabela', alvo: 'public.atividade_participantes' },
+  ],
+  22: [
+    { tipo: 'tabela', alvo: 'public.areas_estrategicas' },
+    { tipo: 'funcao', alvo: 'public.bairros_da_area' },
+  ],
+  23: [
+    { tipo: 'tabela', alvo: 'public.diagnosticos' },
+    { tipo: 'tabela', alvo: 'public.diagnostico_problemas' },
+  ],
+  24: [{ tipo: 'coluna', alvo: 'usos_ia.provedor' }],
+  25: [
+    { tipo: 'tabela', alvo: 'public.planejamentos' },
+    { tipo: 'tabela', alvo: 'public.eixos_narrativos' },
+    { tipo: 'tabela', alvo: 'public.acoes_campanha' },
+  ],
+  26: [
+    { tipo: 'tabela', alvo: 'public.publicacoes' },
+    { tipo: 'tabela', alvo: 'public.publicacao_metricas' },
+  ],
+  27: [
+    { tipo: 'coluna', alvo: 'usuarios.claims_invalidos_apos' },
+    { tipo: 'funcao', alvo: 'public.claims_invalidos_apos' },
+  ],
 };
 
-async function existe(
-  cliente: Client,
-  sentinela: { tipo: 'tabela' | 'coluna' | 'funcao'; alvo: string },
-): Promise<boolean> {
+async function existe(cliente: Client, sentinela: Sentinela): Promise<boolean> {
   if (sentinela.tipo === 'tabela') {
     const { rows } = await cliente.query<{ ok: string | null }>(
       'select to_regclass($1)::text as ok',
@@ -113,26 +153,51 @@ async function principal(): Promise<void> {
      * maior número dela é o valor a informar.
      */
     let maiorDivergencia = 0;
+
+    /*
+     * A adoção só avança enquanto a sequência for CONTÍNUA.
+     *
+     * Se a 0019 e a 0021 estão no esquema mas a 0020 não, adotar até a 0021
+     * pularia a 0020 para sempre — e ninguém saberia que faltou. O limite para
+     * na primeira lacuna.
+     */
+    let sequenciaIntacta = true;
+
     for (const arquivo of arquivos) {
       const numero = numeroDaMigration(arquivo);
-      const sentinela = SENTINELA[numero];
+      const sentinelas = SENTINELA[numero];
       const noRegistro = registrado.has(arquivo);
 
-      if (!sentinela) {
+      if (!sentinelas) {
         process.stdout.write(`  ${noRegistro ? 'registrada' : 'PENDENTE  '}  ${arquivo}\n`);
         continue;
       }
 
-      const noEsquema = await existe(cliente, sentinela);
+      // TODAS precisam existir: meia migration não é migration.
+      const encontradas: string[] = [];
+      for (const sentinela of sentinelas) {
+        if (await existe(cliente, sentinela)) encontradas.push(sentinela.alvo);
+      }
+      const noEsquema = encontradas.length === sentinelas.length;
+      const parcial = encontradas.length > 0 && !noEsquema;
+
       let situacao: string;
       if (noRegistro && noEsquema) situacao = 'ok        ';
       else if (!noRegistro && noEsquema) {
         situacao = 'DIVERGE   ';
-        maiorDivergencia = Math.max(maiorDivergencia, numero);
-      } else if (noRegistro && !noEsquema) situacao = 'REGISTRO SEM ESQUEMA';
-      else situacao = 'pendente  ';
+        if (sequenciaIntacta) maiorDivergencia = numero;
+      } else if (noRegistro && !noEsquema) {
+        situacao = 'REGISTRO SEM ESQUEMA';
+        sequenciaIntacta = false;
+      } else {
+        situacao = parcial ? 'PARCIAL   ' : 'pendente  ';
+        sequenciaIntacta = false;
+      }
 
-      process.stdout.write(`  ${situacao}  ${arquivo}  (${sentinela.alvo})\n`);
+      const detalhe = parcial
+        ? `${encontradas.length}/${sentinelas.length} objetos — NAO adotar`
+        : sentinelas.map((s) => s.alvo).join(', ');
+      process.stdout.write(`  ${situacao}  ${arquivo}  (${detalhe})\n`);
     }
 
     if (maiorDivergencia > 0) {
