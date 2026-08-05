@@ -14,6 +14,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
+import { deveAdotar } from '../src/comum/ordemMigrations.js';
 import { Client } from 'pg';
 
 // Lê o `.env` da RAIZ do monorepo, não o do diretório atual. `dotenv/config`
@@ -97,8 +98,14 @@ async function principal(): Promise<void> {
     if (adocao) {
       const limite = adocao.split('=')[1] ?? '';
       const adotadas = arquivos.filter(
-        (arquivo) => arquivo.localeCompare(limite) <= 0 && !jaAplicadas.has(arquivo),
+        (arquivo) => deveAdotar(arquivo, limite) && !jaAplicadas.has(arquivo),
       );
+      if (adotadas.length === 0) {
+        // Silêncio aqui esconderia um limite mal digitado, e o operador
+        // concluiria que a adoção funcionou.
+        process.stdout.write(`Nenhuma migration corresponde a --adotar-ate=${limite}.
+`);
+      }
       for (const arquivo of adotadas) {
         await cliente.query(
           'insert into manutencao.migrations_aplicadas (arquivo) values ($1) on conflict do nothing',
