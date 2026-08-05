@@ -69,6 +69,15 @@ export function BarraFiltros({
 
   const ativos = contarFiltrosAtivos(filtro);
 
+  const aFormatoData = (data: Date | undefined): string =>
+    data ? data.toISOString().slice(0, 10) : '';
+  const aplicarData = (chave: 'dataInicio' | 'dataFim', valor: string): void => {
+    const novo: Record<string, unknown> = { ...filtro };
+    if (!valor) delete novo[chave];
+    else novo[chave] = new Date(`${valor}T00:00:00`);
+    aplicar(novo as Partial<FiltroGlobal>);
+  };
+
   return (
     <div
       data-imprimir="ocultar"
@@ -98,6 +107,25 @@ export function BarraFiltros({
             </select>
           </label>
         ))}
+
+      <label className="flex min-w-[8rem] flex-1 flex-col gap-1">
+        <span className="text-xs text-[hsl(var(--texto-secundario))]">Período — de</span>
+        <input
+          type="date"
+          value={aFormatoData(filtro.dataInicio)}
+          onChange={(evento) => aplicarData('dataInicio', evento.target.value)}
+          className="h-9 rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-2 text-sm text-[hsl(var(--texto))]"
+        />
+      </label>
+      <label className="flex min-w-[8rem] flex-1 flex-col gap-1">
+        <span className="text-xs text-[hsl(var(--texto-secundario))]">até</span>
+        <input
+          type="date"
+          value={aFormatoData(filtro.dataFim)}
+          onChange={(evento) => aplicarData('dataFim', evento.target.value)}
+          className="h-9 rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-2 text-sm text-[hsl(var(--texto))]"
+        />
+      </label>
 
       {ativos > 0 ? (
         <Botao variante="sutil" onClick={() => aplicar(limparFiltro(filtro))} className="h-9">

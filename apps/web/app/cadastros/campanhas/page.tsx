@@ -44,7 +44,7 @@ const ABRANGENCIAS: AbrangenciaCampanha[] = ['FEDERAL', 'ESTADUAL', 'MUNICIPAL']
 
 export default function PaginaCampanhas(): JSX.Element {
   const { dados, carregando, erro, recarregar } = useListagem<Pagina>('/campanhas?limite=100');
-  const { opcoes } = useOpcoesFiltro();
+  const { opcoes } = useOpcoesFiltro(null, {});
   const confirmacao = useConfirmacao<Campanha>();
 
   const [emEdicao, definirEmEdicao] = useState<Campanha | null>(null);

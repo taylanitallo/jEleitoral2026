@@ -1,13 +1,16 @@
 'use client';
 
 import { TriangleAlert } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
 import { BarraAcoes, Botao, EstadoCarregando, EstadoErro, EstadoVazio, cn } from '@jeleitoral/ui';
 import { RotuloStatusEntrevista, type PaginaDe, type StatusEntrevista } from '@jeleitoral/tipos';
 import { Tabela, type Coluna } from '@/componentes/cadastro/Tabela';
 import { classeControle } from '@/componentes/cadastro/Campo';
+import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
+import { deParametrosUrl, paraParametrosUrl } from '@/lib/filtroGlobal';
 import { useListagem } from '@/lib/useListagem';
+import { useOpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useSessao } from '@/lib/useSessao';
 
 interface LinhaEntrevista {
@@ -39,15 +42,30 @@ const CLASSE_STATUS: Record<StatusEntrevista, string> = {
  * usuário enxerga. ENTREVISTADOR vê só o que ele mesmo coletou; COORDENADOR,
  * a equipe; ADMINISTRADOR, a campanha inteira.
  */
-export default function PaginaRegistroEntrevistas(): JSX.Element {
+function ConteudoRegistroEntrevistas(): JSX.Element {
   const { idCampanha, carregando: carregandoSessao } = useSessao();
   const roteador = useRouter();
+  const buscaUrl = useSearchParams();
 
   const [pagina, definirPagina] = useState(1);
   const [texto, definirTexto] = useState('');
   const [textoAplicado, definirTextoAplicado] = useState('');
   const [status, definirStatus] = useState<StatusEntrevista | ''>('');
   const [comAlerta, definirComAlerta] = useState(false);
+
+  // Só bairro, equipe e período: é o que `GET /campo/entrevistas` de fato
+  // aceita. Cargo, candidato e o resto da hierarquia territorial não fazem
+  // sentido para uma listagem de entrevistas — passar `opcoes` inteiro ao
+  // `BarraFiltros` desenharia seletores que mudam a URL sem mudar a lista.
+  const filtroTerritorial = useMemo(
+    () => deParametrosUrl(new URLSearchParams(buscaUrl.toString())),
+    [buscaUrl],
+  );
+  const { opcoes } = useOpcoesFiltro(idCampanha, filtroTerritorial);
+  const opcoesSuportadas = useMemo(
+    () => ({ idBairro: opcoes.idBairro, idEquipe: opcoes.idEquipe }),
+    [opcoes.idBairro, opcoes.idEquipe],
+  );
 
   const parametros = new URLSearchParams({
     idCampanha: idCampanha ?? '',
@@ -57,6 +75,11 @@ export default function PaginaRegistroEntrevistas(): JSX.Element {
   if (textoAplicado) parametros.set('texto', textoAplicado);
   if (status) parametros.set('status', status);
   if (comAlerta) parametros.set('comAlerta', 'true');
+  const parametrosTerritoriais = paraParametrosUrl(filtroTerritorial);
+  for (const chave of ['idBairro', 'idEquipe', 'dataInicio', 'dataFim']) {
+    const valor = parametrosTerritoriais.get(chave);
+    if (valor) parametros.set(chave, valor);
+  }
 
   const { dados, carregando, erro, recarregar } = useListagem<PaginaDe<LinhaEntrevista>>(
     idCampanha ? `/campo/entrevistas?${parametros.toString()}` : null,
@@ -72,11 +95,9 @@ export default function PaginaRegistroEntrevistas(): JSX.Element {
 
   if (!idCampanha) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <p role="alert" className="text-sm text-[hsl(var(--perigo))]">
-          Seu acesso não está vinculado a nenhuma campanha.
-        </p>
-      </main>
+      <p role="alert" className="text-sm text-[hsl(var(--perigo))]">
+        Seu acesso não está vinculado a nenhuma campanha.
+      </p>
     );
   }
 
@@ -136,13 +157,15 @@ export default function PaginaRegistroEntrevistas(): JSX.Element {
   ];
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
+    <>
       <BarraAcoes
         titulo="Registro de entrevistas"
         subtitulo={dados ? `${dados.total} entrevista(s)` : undefined}
         atualizar={{ aoAcionar: recarregar, carregando }}
         imprimir={{}}
       />
+
+      <BarraFiltros idCampanha={idCampanha} opcoes={opcoesSuportadas} />
 
       <form
         onSubmit={buscar}
@@ -251,6 +274,17 @@ export default function PaginaRegistroEntrevistas(): JSX.Element {
           ) : null}
         </>
       )}
+    </>
+  );
+}
+
+export default function PaginaRegistroEntrevistas(): JSX.Element {
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
+      {/* `useSearchParams` exige fronteira de Suspense na renderização estática. */}
+      <Suspense fallback={<EstadoCarregando mensagem="Carregando registro…" />}>
+        <ConteudoRegistroEntrevistas />
+      </Suspense>
     </main>
   );
 }

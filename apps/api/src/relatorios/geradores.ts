@@ -201,6 +201,36 @@ export function gerarPdf(
   });
 }
 
+/**
+ * CSV com BOM UTF-8 — sem o BOM, o Excel no Windows abre acentuação
+ * corrompida ("Não" vira "NÃo"), e é para lá que este arquivo geralmente vai.
+ *
+ * Sem abas, então sem aba de metadados: os filtros entram como linhas `#` no
+ * topo, que Excel e planilhas do Google mostram como uma linha de texto
+ * solta na coluna A — não corrompe a leitura tabular de quem importa o
+ * arquivo, e ainda registra o recorte para quem abre direto.
+ */
+export function gerarCsv(
+  cabecalho: CabecalhoRelatorio,
+  colunas: readonly ColunaRelatorio[],
+  linhas: ReadonlyArray<Record<string, unknown>>,
+): Buffer {
+  const escapar = (valor: string): string =>
+    /[",\n]/.test(valor) ? `"${valor.replace(/"/g, '""')}"` : valor;
+
+  const partes: string[] = [];
+  partes.push(`# ${cabecalho.titulo} — ${cabecalho.subtitulo}`);
+  for (const filtro of cabecalho.linhasDeFiltro) partes.push(`# ${filtro}`);
+  if (cabecalho.tarja) partes.push(`# ${cabecalho.tarja}`);
+  partes.push(colunas.map((coluna) => escapar(coluna.rotulo)).join(','));
+  for (const linha of linhas) {
+    partes.push(colunas.map((coluna) => escapar(formatarCelula(linha[coluna.chave]))).join(','));
+  }
+
+  const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+  return Buffer.concat([bom, Buffer.from(partes.join('\n'), 'utf-8')]);
+}
+
 function formatarCelula(valor: unknown): string {
   if (valor === null || valor === undefined) return '—';
   if (valor instanceof Date) return valor.toLocaleDateString('pt-BR');

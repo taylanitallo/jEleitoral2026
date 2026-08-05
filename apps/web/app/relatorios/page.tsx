@@ -1,46 +1,85 @@
 'use client';
 
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
 import { BarraAcoes, Botao, EstadoCarregando, EstadoVazio, TarjaUsoInterno } from '@jeleitoral/ui';
 import {
   FormatoExportacao,
   NaturezaLevantamento,
   RotuloNaturezaLevantamento,
+  type FiltroGlobal,
   type FormatoExportacao as Formato,
   type NaturezaLevantamento as Natureza,
 } from '@jeleitoral/tipos';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
+import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
+import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
+import { useListagem } from '@/lib/useListagem';
+import { useOpcoesFiltro, type OpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useSessao } from '@/lib/useSessao';
 
-/**
- * A lista é fechada de propósito. O usuário escolhe um relatório e um recorte —
- * nunca escreve a consulta. Consulta livre sobre uma base de intenção de voto é
- * um vazamento esperando acontecer.
- */
-const RELATORIOS = [
-  {
-    chave: 'mapeamento_por_bairro',
-    titulo: 'Mapeamento por bairro',
-    descricao: 'Domicílios, entrevistados e apoiadores por bairro do recorte.',
-  },
-  {
-    chave: 'produtividade_por_entrevistador',
-    titulo: 'Produtividade por entrevistador',
-    descricao: 'Volume e qualidade da coleta por pessoa da equipe.',
-  },
-  {
-    chave: 'lista_para_mobilizacao',
-    titulo: 'Lista para mobilização',
-    descricao: 'Contatos classificados para acionamento no dia da eleição.',
-  },
-] as const;
+interface RelatorioCatalogo {
+  chave: string;
+  titulo: string;
+  descricao: string;
+}
 
-export default function PaginaRelatorios(): JSX.Element {
+/**
+ * Rótulo legível de cada filtro ativo, para a auditoria da exportação.
+ *
+ * A URL só guarda IDs (`idBairro=uuid`). Sem resolver para o nome antes de
+ * mandar ao servidor, o cabeçalho do PDF diria "Bairro: 3f2a...", que não
+ * serve para auditar recorte nenhum três meses depois.
+ */
+function rotulosDosFiltrosAtivos(
+  filtro: Partial<FiltroGlobal>,
+  opcoes: OpcoesFiltro,
+): Array<{ rotulo: string; valor: string }> {
+  const nomes: Partial<Record<keyof FiltroGlobal, string>> = {
+    idCargo: 'Cargo',
+    idCandidato: 'Candidato',
+    uf: 'UF',
+    idMunicipio: 'Município',
+    idZona: 'Zona',
+    idLocalVotacao: 'Local de votação',
+    idSecao: 'Seção',
+    idBairro: 'Bairro',
+    idEquipe: 'Equipe',
+  };
+
+  const partes: Array<{ rotulo: string; valor: string }> = [];
+  for (const [chave, rotulo] of Object.entries(nomes) as Array<[keyof FiltroGlobal, string]>) {
+    const valor = filtro[chave];
+    if (valor === undefined || valor === null || valor === '') continue;
+    const opcao = opcoes[chave as keyof OpcoesFiltro]?.find((item) => item.valor === String(valor));
+    partes.push({ rotulo, valor: opcao?.rotulo ?? String(valor) });
+  }
+  if (filtro.dataInicio || filtro.dataFim) {
+    const inicio = filtro.dataInicio?.toLocaleDateString('pt-BR') ?? 'início';
+    const fim = filtro.dataFim?.toLocaleDateString('pt-BR') ?? 'hoje';
+    partes.push({ rotulo: 'Período', valor: `${inicio} a ${fim}` });
+  }
+  return partes;
+}
+
+function ConteudoRelatorios(): JSX.Element {
+  const parametros = useSearchParams();
   const { idCampanha, carregando: carregandoSessao } = useSessao();
   const [gerando, definirGerando] = useState<string | null>(null);
   const [aviso, definirAviso] = useState<string | null>(null);
   const [formato, definirFormato] = useState<Formato>('PDF');
   const [natureza, definirNatureza] = useState<Natureza>('LEVANTAMENTO_INTERNO');
+
+  const filtro = useMemo(
+    () => ({
+      ...deParametrosUrl(new URLSearchParams(parametros.toString())),
+      idCampanha: idCampanha ?? '',
+    }),
+    [parametros, idCampanha],
+  );
+  const { opcoes } = useOpcoesFiltro(idCampanha, filtro);
+  const { dados: catalogo, carregando: carregandoCatalogo } =
+    useListagem<RelatorioCatalogo[]>('/relatorios/catalogo');
 
   async function exportar(relatorio: string): Promise<void> {
     if (!idCampanha) return;
@@ -58,8 +97,8 @@ export default function PaginaRelatorios(): JSX.Element {
           relatorio,
           formato,
           natureza,
-          filtro: { idCampanha },
-          filtrosPorExtenso: [],
+          filtro,
+          filtrosPorExtenso: rotulosDosFiltrosAtivos(filtro, opcoes),
         }),
       });
 
@@ -94,18 +133,16 @@ export default function PaginaRelatorios(): JSX.Element {
   if (carregandoSessao) return <EstadoCarregando mensagem="Carregando…" linhas={3} />;
 
   if (!idCampanha) {
-    return (
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        <EstadoVazio titulo="Nenhuma campanha vinculada" />
-      </main>
-    );
+    return <EstadoVazio titulo="Nenhuma campanha vinculada" />;
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
-      <BarraAcoes titulo="Relatórios" subtitulo="Exportação com cabeçalho e marca d'água" />
+    <>
+      <BarraAcoes titulo="Relatórios" subtitulo={descreverFiltro(filtro)} imprimir={{}} />
 
       <TarjaUsoInterno natureza={natureza} />
+
+      <BarraFiltros idCampanha={idCampanha} opcoes={opcoes} />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id="formato" rotulo="Formato">
@@ -152,29 +189,44 @@ export default function PaginaRelatorios(): JSX.Element {
         </p>
       ) : null}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {RELATORIOS.map((relatorio) => (
-          <li
-            key={relatorio.chave}
-            className="flex flex-col gap-2 rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-4"
-          >
-            <h2 className="text-sm font-medium text-[hsl(var(--texto))]">{relatorio.titulo}</h2>
-            <p className="text-sm text-[hsl(var(--texto-secundario))]">{relatorio.descricao}</p>
-            <Botao
-              className="self-start"
-              carregando={gerando === relatorio.chave}
-              onClick={() => void exportar(relatorio.chave)}
+      {carregandoCatalogo ? (
+        <EstadoCarregando mensagem="Carregando relatórios…" linhas={3} />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {(catalogo ?? []).map((relatorio) => (
+            <li
+              key={relatorio.chave}
+              className="flex flex-col gap-2 rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-4"
             >
-              Exportar {formato}
-            </Botao>
-          </li>
-        ))}
-      </ul>
+              <h2 className="text-sm font-medium text-[hsl(var(--texto))]">{relatorio.titulo}</h2>
+              <p className="text-sm text-[hsl(var(--texto-secundario))]">{relatorio.descricao}</p>
+              <Botao
+                className="self-start"
+                carregando={gerando === relatorio.chave}
+                onClick={() => void exportar(relatorio.chave)}
+              >
+                Exportar {formato}
+              </Botao>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <p className="text-xs text-[hsl(var(--texto-fraco))]">
         Todo arquivo exportado sai com marca d&apos;água pessoal e fica registrado na auditoria.
         Exportações grandes são enfileiradas e avisadas quando prontas.
       </p>
+    </>
+  );
+}
+
+export default function PaginaRelatorios(): JSX.Element {
+  return (
+    <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6">
+      {/* `useSearchParams` exige fronteira de Suspense na renderização estática. */}
+      <Suspense fallback={<EstadoCarregando mensagem="Carregando relatórios…" />}>
+        <ConteudoRelatorios />
+      </Suspense>
     </main>
   );
 }

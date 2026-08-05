@@ -1,4 +1,4 @@
-import { Body, Controller, Header, Injectable, Module, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Header, Injectable, Module, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import {
@@ -13,15 +13,21 @@ import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { BancoService } from '../banco/banco.service.js';
 import { construirRecorte } from '../painel/construirRecorte.js';
 import { exigeProcessamentoAssincrono, montarCabecalho } from './cabecalhoRelatorio.js';
-import { gerarExcel, gerarPdf, type ColunaRelatorio } from './geradores.js';
+import { gerarCsv, gerarExcel, gerarPdf, type ColunaRelatorio } from './geradores.js';
 
 /**
  * Relatórios prontos. A lista é fechada de propósito — o usuário escolhe um
  * relatório e um recorte, nunca escreve a consulta.
+ *
+ * `titulo`/`descricao` alimentam `GET /relatorios/catalogo`: antes a lista
+ * vivia duplicada, literalmente, aqui e em `apps/web/app/relatorios/page.tsx`
+ * — as duas divergiam no instante em que alguém acrescentasse um relatório
+ * de um lado só. Agora o catálogo tem uma fonte só.
  */
 const RELATORIOS = {
   mapeamento_por_bairro: {
     titulo: 'Mapeamento por bairro',
+    descricao: 'Domicílios, entrevistados e apoiadores por bairro do recorte.',
     permissao: 'campo.ler',
     colunas: [
       { chave: 'bairro', rotulo: 'Bairro', largura: 30 },
@@ -44,6 +50,7 @@ const RELATORIOS = {
   },
   produtividade_por_entrevistador: {
     titulo: 'Produtividade por entrevistador',
+    descricao: 'Volume e qualidade da coleta por pessoa da equipe.',
     permissao: 'campo.ler',
     colunas: [
       { chave: 'entrevistador', rotulo: 'Entrevistador', largura: 30 },
@@ -51,20 +58,29 @@ const RELATORIOS = {
       { chave: 'duracao_media', rotulo: 'Duração média (s)', tipo: 'numero' },
       { chave: 'alertas', rotulo: 'Alertas de qualidade', tipo: 'numero' },
     ] as ColunaRelatorio[],
+    // A subconsulta de alertas ganhou `a.id_campanha = ent.id_campanha`: sem
+    // isso, um entrevistador que trabalha em duas campanhas da mesma
+    // organização tinha os alertas da OUTRA campanha somados aqui, inflando
+    // a coluna neste recorte.
     sql: (predicado: string) => `
       select u.nome as entrevistador,
              count(ent.id) as entrevistas,
              round(avg(ent.duracao_segundos)) as duracao_media,
              (select count(*) from public.alertas_coleta a
-               where a.id_usuario_avaliado = u.id) as alertas
+               where a.id_usuario_avaliado = u.id and a.id_campanha = ent.id_campanha) as alertas
         from public.entrevistas_vigentes ent
         join public.usuarios u on u.id = ent.id_usuario_entrevistador
        where ent.status in ('CONCLUIDA', 'VALIDADA') and ${predicado}
        group by u.id, u.nome order by entrevistas desc`,
-    colunasRecorte: { idCampanha: 'ent.id_campanha', idEquipe: 'ent.id_equipe' },
+    colunasRecorte: {
+      idCampanha: 'ent.id_campanha',
+      idEquipe: 'ent.id_equipe',
+      dataReferencia: 'ent.data_hora',
+    },
   },
   lista_para_mobilizacao: {
     titulo: 'Apoiadores para mobilização',
+    descricao: 'Contatos classificados para acionamento no dia da eleição.',
     permissao: 'campo.ler',
     colunas: [
       { chave: 'secao', rotulo: 'Seção', largura: 14 },
@@ -83,6 +99,99 @@ const RELATORIOS = {
        where e.anonimizado_em is null and ${predicado}
        group by s.numero, l.nome order by apoiadores desc`,
     colunasRecorte: { idCampanha: 'e.id_campanha', idSecao: 'e.id_secao' },
+  },
+  intencao_por_candidato: {
+    titulo: 'Intenção de voto por candidato',
+    descricao: 'Quantas intenções cada candidato da chapa recebeu, cargo a cargo.',
+    permissao: 'campo.ler',
+    colunas: [
+      { chave: 'cargo', rotulo: 'Cargo', largura: 22 },
+      { chave: 'candidato', rotulo: 'Candidato', largura: 30 },
+      { chave: 'numero_urna', rotulo: 'Número', tipo: 'numero' },
+      { chave: 'intencoes', rotulo: 'Intenções', tipo: 'numero' },
+    ] as ColunaRelatorio[],
+    sql: (predicado: string) => `
+      select cg.nome as cargo,
+             case
+               when iv.tipo = 'CANDIDATO' then c.nome_urna
+               when iv.tipo = 'BRANCO' then 'Branco'
+               when iv.tipo = 'NULO' then 'Nulo'
+               when iv.tipo = 'INDECISO' then 'Indeciso'
+               when iv.tipo = 'NAO_RESPONDEU' then 'Não respondeu'
+               else 'Não cadastrado'
+             end as candidato,
+             c.numero_urna,
+             count(*) as intencoes
+        from public.intencoes_voto iv
+        join public.entrevistas_vigentes ent on ent.id = iv.id_entrevista
+        join public.entrevistados en on en.id = ent.id_entrevistado
+        left join public.domicilios d on d.id = en.id_domicilio
+        join public.cargos cg on cg.id = iv.id_cargo
+        left join public.candidatos c on c.id = iv.id_candidato
+       where ${predicado}
+       group by cg.nome, candidato, c.numero_urna
+       order by cg.nome, intencoes desc`,
+    colunasRecorte: {
+      idCampanha: 'ent.id_campanha',
+      idCargo: 'iv.id_cargo',
+      idCandidato: 'iv.id_candidato',
+      idEquipe: 'ent.id_equipe',
+      idBairro: 'd.id_bairro',
+      idSecao: 'en.id_secao',
+      dataReferencia: 'ent.data_hora',
+    },
+  },
+  evolucao_diaria: {
+    titulo: 'Evolução diária da coleta',
+    descricao: 'Entrevistas concluídas por dia, no recorte selecionado.',
+    permissao: 'campo.ler',
+    colunas: [
+      { chave: 'dia', rotulo: 'Dia', tipo: 'data' },
+      { chave: 'entrevistas', rotulo: 'Entrevistas', tipo: 'numero' },
+    ] as ColunaRelatorio[],
+    sql: (predicado: string) => `
+      select date_trunc('day', ent.data_hora)::date as dia, count(*) as entrevistas
+        from public.entrevistas_vigentes ent
+        join public.entrevistados en on en.id = ent.id_entrevistado
+        left join public.domicilios d on d.id = en.id_domicilio
+       where ent.status in ('CONCLUIDA', 'VALIDADA') and ${predicado}
+       group by dia order by dia`,
+    colunasRecorte: {
+      idCampanha: 'ent.id_campanha',
+      idEquipe: 'ent.id_equipe',
+      idBairro: 'd.id_bairro',
+      idSecao: 'en.id_secao',
+      dataReferencia: 'ent.data_hora',
+    },
+  },
+  chapa_consolidada: {
+    titulo: 'Chapa consolidada',
+    descricao: 'Projeção mais recente de cada candidato próprio, lado a lado.',
+    permissao: 'projecao.ler',
+    colunas: [
+      { chave: 'cargo', rotulo: 'Cargo', largura: 22 },
+      { chave: 'candidato', rotulo: 'Candidato', largura: 30 },
+      { chave: 'numero_urna', rotulo: 'Número', tipo: 'numero' },
+      { chave: 'votos_projetados', rotulo: 'Projeção', tipo: 'numero' },
+      { chave: 'intervalo_min', rotulo: 'Mínimo', tipo: 'numero' },
+      { chave: 'intervalo_max', rotulo: 'Máximo', tipo: 'numero' },
+      { chave: 'cobertura_amostral', rotulo: 'Cobertura', tipo: 'percentual' },
+    ] as ColunaRelatorio[],
+    // Nível MUNICIPIO: é o recorte da campanha inteira, o mesmo em que
+    // `recalcularCampanha` (projeção, Fase 1) agrega a chapa toda.
+    sql: (predicado: string) => `
+      select cg.nome as cargo, c.nome_urna as candidato, c.numero_urna,
+             p.votos_projetados, p.intervalo_min, p.intervalo_max, p.cobertura_amostral
+        from public.projecoes p
+        join public.candidatos c on c.id = p.id_candidato
+        join public.cargos cg on cg.id = p.id_cargo
+       where p.nivel = 'MUNICIPIO' and c.proprio = true and ${predicado}
+       order by cg.nome`,
+    colunasRecorte: {
+      idCampanha: 'p.id_campanha',
+      idCargo: 'p.id_cargo',
+      idCandidato: 'p.id_candidato',
+    },
   },
 } as const;
 
@@ -183,6 +292,17 @@ export class RelatoriosService {
         };
       }
 
+      // CSV estava na lista de formatos (`FormatoExportacao`) sem gerador
+      // próprio — pedir CSV baixava um PDF em silêncio, com extensão .pdf
+      // dentro de um arquivo que o usuário salvou como .csv.
+      if (entrada.formato === 'CSV') {
+        return {
+          arquivo: gerarCsv(cabecalho, definicao.colunas, rows),
+          nomeArquivo: `${entrada.relatorio}-${dataArquivo}.csv`,
+          tipoMime: 'text/csv; charset=utf-8',
+        };
+      }
+
       return {
         arquivo: await gerarPdf(cabecalho, definicao.colunas, rows),
         nomeArquivo: `${entrada.relatorio}-${dataArquivo}.pdf`,
@@ -190,11 +310,26 @@ export class RelatoriosService {
       };
     });
   }
+
+  /** Catálogo de relatórios disponíveis, para a tela montar a lista sem duplicá-la. */
+  catalogo(): Array<{ chave: NomeRelatorio; titulo: string; descricao: string }> {
+    return (Object.keys(RELATORIOS) as NomeRelatorio[]).map((chave) => ({
+      chave,
+      titulo: RELATORIOS[chave].titulo,
+      descricao: RELATORIOS[chave].descricao,
+    }));
+  }
 }
 
 @Controller('relatorios')
 class RelatoriosController {
   constructor(private readonly relatorios: RelatoriosService) {}
+
+  @Get('catalogo')
+  @ExigePermissao('relatorios.exportar')
+  catalogo(): Array<{ chave: NomeRelatorio; titulo: string; descricao: string }> {
+    return this.relatorios.catalogo();
+  }
 
   @Post('exportar')
   @ExigePermissao('relatorios.exportar')

@@ -50,6 +50,10 @@ const ConsultaEntrevistas = ParametrosPaginacao.extend({
   status: StatusEntrevista.optional(),
   apenasVigentes: z.coerce.boolean().default(true),
   comAlerta: z.coerce.boolean().optional(),
+  idBairro: Uuid.optional(),
+  idEquipe: Uuid.optional(),
+  dataInicio: z.coerce.date().optional(),
+  dataFim: z.coerce.date().optional(),
 });
 
 const EntradaDomicilio = z.object({
@@ -541,6 +545,24 @@ export class CampoController {
           `exists (select 1 from public.alertas_coleta a
                     where a.id_entrevista = ent.id and a.revisado_em is null)`,
         );
+      }
+      if (parametros.idBairro) {
+        valores.push(parametros.idBairro);
+        condicoes.push(`b.id = $${valores.length}`);
+      }
+      if (parametros.idEquipe) {
+        valores.push(parametros.idEquipe);
+        condicoes.push(`ent.id_equipe = $${valores.length}`);
+      }
+      if (parametros.dataInicio) {
+        valores.push(parametros.dataInicio);
+        condicoes.push(`ent.data_hora >= $${valores.length}`);
+      }
+      if (parametros.dataFim) {
+        valores.push(parametros.dataFim);
+        // Fim de período é inclusivo: quem escolhe "até 20/08" espera o dia
+        // 20 inteiro, não até a meia-noite dele.
+        condicoes.push(`ent.data_hora < $${valores.length}::date + interval '1 day'`);
       }
 
       valores.push(parametros.limite, (parametros.pagina - 1) * parametros.limite);

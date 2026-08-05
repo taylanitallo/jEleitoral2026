@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   AvisoNaoSubstitui,
   BarraAcoes,
+  Botao,
   EstadoCarregando,
   EstadoErro,
   EstadoVazio,
@@ -19,7 +20,7 @@ import {
 import { formatarPercentual } from '@jeleitoral/utilitarios';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { Tabela } from '@/componentes/cadastro/Tabela';
-import { api } from '@/lib/api';
+import { api, ErroDaApi } from '@/lib/api';
 import { useListagem } from '@/lib/useListagem';
 import { useSessao } from '@/lib/useSessao';
 
@@ -57,6 +58,8 @@ export default function PaginaProjecao(): JSX.Element {
   const [candidatos, definirCandidatos] = useState<Candidato[]>([]);
   const [idCandidato, definirIdCandidato] = useState('');
   const [nivel, definirNivel] = useState<Nivel | ''>('');
+  const [recalculando, definirRecalculando] = useState(false);
+  const [erroRecalculo, definirErroRecalculo] = useState<string | null>(null);
 
   const { dados, carregando, erro, recarregar } = useListagem<Projecao[]>(
     idCampanha && idCandidato
@@ -77,6 +80,38 @@ export default function PaginaProjecao(): JSX.Element {
       })
       .catch(() => definirCandidatos([]));
   }, [idCampanha]);
+
+  /**
+   * Recalcula a chapa inteira. É esta rota que alimenta `projecoes_diarias`
+   * — sem alguém acionando isto todo dia, o gráfico de tendência da Fase 6
+   * nasce sem série. Até existir agendador externo, é este botão.
+   */
+  async function recalcular(): Promise<void> {
+    if (!idCampanha) return;
+    definirRecalculando(true);
+    definirErroRecalculo(null);
+    try {
+      await api.enviar('/projecao/recalcular', { idCampanha });
+      recarregar();
+    } catch (falha) {
+      definirErroRecalculo(
+        falha instanceof ErroDaApi
+          ? falha.corpo.mensagem
+          : 'Não foi possível recalcular a projeção.',
+      );
+    } finally {
+      definirRecalculando(false);
+    }
+  }
+
+  const ultimaAtualizacao =
+    dados && dados.length > 0
+      ? dados.reduce(
+          (maisRecente, linha) =>
+            linha.calculado_em > maisRecente ? linha.calculado_em : maisRecente,
+          dados[0]!.calculado_em,
+        )
+      : null;
 
   if (carregandoSessao) return <EstadoCarregando mensagem="Carregando…" linhas={3} />;
 
@@ -99,6 +134,31 @@ export default function PaginaProjecao(): JSX.Element {
 
       <TarjaUsoInterno natureza="LEVANTAMENTO_INTERNO" />
       <AvisoNaoSubstitui contexto="juridico" />
+
+      <div
+        data-imprimir="ocultar"
+        className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-3"
+      >
+        <p className="text-xs text-[hsl(var(--texto-secundario))]">
+          {ultimaAtualizacao
+            ? `Última atualização: ${new Date(ultimaAtualizacao).toLocaleString('pt-BR')}`
+            : 'Ainda não recalculada.'}
+        </p>
+        <Botao
+          variante="sutil"
+          tamanho="pequeno"
+          onClick={() => void recalcular()}
+          carregando={recalculando}
+        >
+          Recalcular chapa
+        </Botao>
+      </div>
+
+      {erroRecalculo ? (
+        <p role="alert" className="text-sm text-[hsl(var(--perigo))]">
+          {erroRecalculo}
+        </p>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id="candidato" rotulo="Candidato">

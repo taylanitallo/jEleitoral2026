@@ -15,6 +15,7 @@ import { formatarPercentual } from '@jeleitoral/utilitarios';
 import type { ClassificacaoEleitor } from '@jeleitoral/tipos';
 import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
 import { CartaoIndicador } from '@/componentes/dashboard/CartaoIndicador';
+import { GraficoTendencia } from '@/componentes/dashboard/GraficoTendencia';
 import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
 import { useOpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useResumoPainel } from '@/lib/useResumoPainel';
@@ -42,20 +43,7 @@ function ConteudoPainel(): JSX.Element {
   );
 
   const { resumo, carregando, erro, recarregar } = useResumoPainel(filtro);
-  const { opcoes, carregando: carregandoOpcoes } = useOpcoesFiltro();
-
-  if (carregandoSessao) {
-    return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
-  }
-
-  if (!idCampanha) {
-    return (
-      <EstadoVazio
-        titulo="Nenhuma campanha vinculada"
-        descricao={`O usuário ${sessao?.email ?? ''} não está vinculado a nenhuma campanha. Peça ao administrador da organização para incluí-lo.`}
-      />
-    );
-  }
+  const { opcoes, carregando: carregandoOpcoes } = useOpcoesFiltro(idCampanha, filtro);
 
   if (carregandoSessao) {
     return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
@@ -184,6 +172,13 @@ function ConteudoPainel(): JSX.Element {
                 );
               })}
             </ul>
+          </section>
+
+          <section className="grafico evitar-quebra rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-4">
+            <h2 className="text-sm font-medium text-[hsl(var(--texto))]">Entrevistas por dia</h2>
+            <div className="mt-3">
+              <GraficoTendencia dados={resumo.entrevistasPorDia} rotulo="entrevistas" />
+            </div>
           </section>
         </>
       )}

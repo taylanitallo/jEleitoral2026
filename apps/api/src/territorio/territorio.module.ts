@@ -222,6 +222,96 @@ class TerritorioController {
     });
   }
 
+  /**
+   * Bairros já validados de um município — para preencher filtro, não fila de
+   * curadoria. `GET /territorio/curadoria` é o oposto: só o que ainda não foi
+   * conferido. Aqui é só o que já pode ser usado como recorte confiável.
+   */
+  @Get('bairros')
+  @ExigePermissao('territorio.ler')
+  async bairros(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
+    const parametros = z
+      .object({ idCampanha: Uuid, idMunicipio: z.coerce.number().int().optional() })
+      .parse(consulta);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select b.id, b.nome
+           from public.bairros b
+          where b.id_campanha = $1 and b.validado = true and b.id_bairro_mesclado_em is null
+            and ($2::int is null or b.id_municipio = $2::int)
+          order by b.nome`,
+        [parametros.idCampanha, parametros.idMunicipio ?? null],
+      );
+      return rows;
+    });
+  }
+
+  /**
+   * Zonas eleitorais com local de votação no município — e não todas as zonas
+   * do estado. Zona pertence à UF, não ao município (`zonas_eleitorais` não
+   * tem `id_municipio`); listar por presença em `locais_votacao` é o que faz o
+   * filtro em cascata (UF → Município → Zona) mostrar só o que existe ali.
+   */
+  @Get('zonas')
+  @ExigePermissao('territorio.ler')
+  async zonas(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
+    const parametros = z.object({ idMunicipio: z.coerce.number().int() }).parse(consulta);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select distinct z.id, z.numero, z.nome
+           from public.zonas_eleitorais z
+           join public.locais_votacao lv on lv.id_zona = z.id
+          where lv.id_municipio = $1
+          order by z.numero`,
+        [parametros.idMunicipio],
+      );
+      return rows;
+    });
+  }
+
+  /** Locais de votação de uma zona (ou de um município inteiro, sem zona). */
+  @Get('locais-votacao')
+  @ExigePermissao('territorio.ler')
+  async locaisVotacao(
+    @Claims() claims: ClaimsUsuario,
+    @Query() consulta: unknown,
+  ): Promise<unknown[]> {
+    const parametros = z
+      .object({ idMunicipio: z.coerce.number().int(), idZona: Uuid.optional() })
+      .parse(consulta);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select id, codigo, nome
+           from public.locais_votacao
+          where id_municipio = $1 and ($2::uuid is null or id_zona = $2::uuid)
+          order by nome`,
+        [parametros.idMunicipio, parametros.idZona ?? null],
+      );
+      return rows;
+    });
+  }
+
+  /** Seções eleitorais de um local de votação. */
+  @Get('secoes')
+  @ExigePermissao('territorio.ler')
+  async secoes(@Claims() claims: ClaimsUsuario, @Query() consulta: unknown): Promise<unknown[]> {
+    const parametros = z.object({ idLocalVotacao: Uuid }).parse(consulta);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select id, numero
+           from public.secoes_eleitorais
+          where id_local_votacao = $1
+          order by numero`,
+        [parametros.idLocalVotacao],
+      );
+      return rows;
+    });
+  }
+
   @Get('curadoria')
   @ExigePermissao('territorio.gerenciar')
   async curadoria(

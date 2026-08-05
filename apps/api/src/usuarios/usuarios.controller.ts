@@ -176,6 +176,34 @@ export class UsuariosController {
     });
   }
 
+  /**
+   * Equipes da campanha, para o filtro global e para o cadastro de usuário.
+   *
+   * `equipes.ler`, não `usuarios.ler`: é a permissão que a RLS de
+   * `public.equipes` de fato verifica (`0003_politicas_rls_nucleo.sql`).
+   * Guardar com outra permissão abriria a possibilidade de um perfil passar
+   * no guard e receber lista vazia da RLS sem entender por quê — ou pior,
+   * um perfil futuro com `equipes.ler` mas sem `usuarios.ler` ficar barrado
+   * aqui sem necessidade.
+   */
+  @Get('equipes')
+  @ExigePermissao('equipes.ler')
+  async equipes(
+    @Claims() claims: ClaimsUsuario,
+    @Query() consulta: unknown,
+  ): Promise<Array<{ id: string; nome: string }>> {
+    const parametros = z.object({ idCampanha: Uuid }).parse(consulta);
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query<{ id: string; nome: string }>(
+        `select id, nome from public.equipes
+          where id_campanha = $1 and ativa = true
+          order by nome`,
+        [parametros.idCampanha],
+      );
+      return rows;
+    });
+  }
+
   @Post()
   @ExigePermissao('usuarios.gerenciar', 'CAMPANHA')
   async criar(
