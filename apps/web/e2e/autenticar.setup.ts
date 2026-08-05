@@ -21,12 +21,19 @@ setup('autenticar', async ({ page }) => {
   const email = process.env['EMAIL_E2E'];
   const senha = process.env['SENHA_E2E'];
 
-  if (!email || !senha) {
-    throw new Error(
-      'Defina EMAIL_E2E e SENHA_E2E para rodar o E2E autenticado.\n' +
-        'Use uma conta de HOMOLOGAÇÃO — o E2E escreve dados.',
-    );
-  }
+  /*
+   * PULA, não falha.
+   *
+   * O `testIgnore` do config já descarta as specs sem credenciais, mas o setup
+   * não é uma spec e rodava assim mesmo — derrubando o job inteiro com uma
+   * falha que não é defeito de código, só ambiente sem segredo configurado. Um
+   * CI que fica vermelho por configuração ausente é um CI que se aprende a
+   * ignorar.
+   */
+  setup.skip(
+    !email || !senha,
+    'Defina EMAIL_E2E e SENHA_E2E (conta de HOMOLOGAÇÃO — o E2E escreve dados).',
+  );
 
   await page.goto('/entrar');
   await page.getByLabel(/e-?mail/i).fill(email);
