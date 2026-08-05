@@ -43,12 +43,17 @@ async function abrirFormulario(page: Page): Promise<void> {
 }
 
 /**
- * Preenche a primeira intenção de voto disponível.
+ * Preenche a primeira intenção de voto disponível, pelo `SeletorCandidato`.
  *
  * Por seletor de `id`, e não pelo rótulo "Deputado Federal": os cargos vêm da
  * campanha, e prender o teste a um deles o quebra quando o ambiente muda de
  * eleição — que foi exatamente o que aconteceu com a versão anterior destes
  * testes.
+ *
+ * Usa **"Outro número"**, e não a busca por candidato cadastrado: o ambiente
+ * de homologação pode não ter chapa cadastrada para a campanha do usuário de
+ * teste, e essa via não depende de dado nenhum — é a mesma saída de emergência
+ * que o entrevistador usa em campo para um número que ainda não está na lista.
  *
  * Existe porque o botão de salvar exige CONTEÚDO além do consentimento: nome e
  * termo aceito, sem nenhuma intenção nem recusa registrada, é entrevista que
@@ -57,7 +62,14 @@ async function abrirFormulario(page: Page): Promise<void> {
 async function preencherPrimeiraIntencao(page: Page): Promise<void> {
   const campo = page.locator('[id^="cargo-"]').first();
   await expect(campo).toBeVisible({ timeout: 10_000 });
-  await campo.fill('1234');
+  await campo.click();
+
+  const outroNumero = page.getByPlaceholder('Outro número');
+  await expect(outroNumero).toBeVisible({ timeout: 5_000 });
+  await outroNumero.fill('1234');
+  // `exact: true`: no desktop a sidebar tem "Usar tema escuro", que casaria
+  // por substring com um "Usar" impreciso.
+  await page.getByRole('button', { name: 'Usar', exact: true }).click();
 }
 
 test.describe('formulário de entrevista', () => {

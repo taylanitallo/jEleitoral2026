@@ -57,8 +57,22 @@ export class CampoController {
     @Query() consulta: unknown,
   ): Promise<{
     campanha: { id: string; nome: string; uf: string | null; anoPleito: number };
-    cargos: Array<{ id: string; nome: string; quantidadeVotosPermitida: number }>;
+    cargos: Array<{
+      id: string;
+      nome: string;
+      quantidadeVotosPermitida: number;
+      digitosNumeroUrna: number;
+    }>;
+    candidatos: Array<{
+      id: string;
+      idCargo: string;
+      nomeUrna: string;
+      numeroUrna: string;
+      siglaPartido: string | null;
+      proprio: boolean;
+    }>;
     consentimento: { id: string; versao: string; texto: string } | null;
+    atualizadoEm: string;
   }> {
     const { idCampanha } = z.object({ idCampanha: Uuid }).parse(consulta);
 
@@ -90,8 +104,9 @@ export class CampoController {
         id: string;
         nome: string;
         quantidade_votos_permitida: number;
+        digitos_numero_urna: number;
       }>(
-        `select id, nome, quantidade_votos_permitida
+        `select id, nome, quantidade_votos_permitida, digitos_numero_urna
            from public.cargos
           where nome <> $1
           order by case nome
@@ -102,6 +117,30 @@ export class CampoController {
                      else 5
                    end`,
         [ehDistritoFederal ? 'Deputado Estadual' : 'Deputado Distrital'],
+      );
+
+      /*
+       * Candidatos da campanha, para o entrevistador escolher pelo NOME.
+       *
+       * Sem isto o entrevistador digitava um número às cegas, e o número virava
+       * `numero_declarado` sem nunca se tornar `id_candidato` — a raiz do
+       * defeito que a migration 0028 corrigiu. `proprio` primeiro: são os que a
+       * campanha mais precisa que o entrevistador ache rápido.
+       */
+      const { rows: candidatos } = await conexao.query<{
+        id: string;
+        id_cargo: string;
+        nome_urna: string;
+        numero_urna: string;
+        sigla_partido: string | null;
+        proprio: boolean;
+      }>(
+        `select c.id, c.id_cargo, c.nome_urna, c.numero_urna, p.sigla as sigla_partido, c.proprio
+           from public.candidatos c
+           left join public.partidos p on p.id = c.id_partido
+          where c.id_campanha = $1 and c.ativo
+          order by c.proprio desc, c.nome_urna`,
+        [idCampanha],
       );
 
       // A vigente é a de `vigente_ate` nulo. Havendo mais de uma por engano,
@@ -130,8 +169,18 @@ export class CampoController {
           id: cargo.id,
           nome: cargo.nome,
           quantidadeVotosPermitida: cargo.quantidade_votos_permitida,
+          digitosNumeroUrna: cargo.digitos_numero_urna,
+        })),
+        candidatos: candidatos.map((candidato) => ({
+          id: candidato.id,
+          idCargo: candidato.id_cargo,
+          nomeUrna: candidato.nome_urna,
+          numeroUrna: candidato.numero_urna,
+          siglaPartido: candidato.sigla_partido,
+          proprio: candidato.proprio,
         })),
         consentimento: termos[0] ?? null,
+        atualizadoEm: new Date().toISOString(),
       };
     });
   }

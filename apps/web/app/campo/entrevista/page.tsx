@@ -7,14 +7,9 @@ import { FormularioEntrevista } from '@/componentes/campo/FormularioEntrevista';
 import { IndicadorFilaOffline } from '@/componentes/IndicadorFilaOffline';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { ErroDaApi, api } from '@/lib/api';
+import { useContextoCampo } from '@/lib/useContextoCampo';
 import { useListagem } from '@/lib/useListagem';
 import { useSessao } from '@/lib/useSessao';
-
-interface Contexto {
-  campanha: { id: string; nome: string; uf: string | null; anoPleito: number };
-  cargos: Array<{ id: string; nome: string; quantidadeVotosPermitida: number }>;
-  consentimento: { id: string; versao: string; texto: string } | null;
-}
 
 interface Municipio {
   idIbge: number;
@@ -44,9 +39,12 @@ interface DomicilioResolvido {
 export default function PaginaEntrevista(): JSX.Element {
   const { idCampanha, carregando: carregandoSessao } = useSessao();
 
-  const { dados: contexto, carregando } = useListagem<Contexto>(
-    idCampanha ? `/campo/contexto?idCampanha=${idCampanha}` : null,
-  );
+  const {
+    contexto,
+    origem: origemContexto,
+    desatualizadoEm,
+    carregando,
+  } = useContextoCampo(idCampanha);
 
   const uf = contexto?.campanha.uf ?? null;
   const { dados: municipios } = useListagem<Municipio[]>(
@@ -125,6 +123,16 @@ export default function PaginaEntrevista(): JSX.Element {
         <h1 className="text-xl font-semibold text-[hsl(var(--texto))]">Nova entrevista</h1>
         <p className="text-sm text-[hsl(var(--texto-secundario))]">{contexto.campanha.nome}</p>
       </header>
+
+      {origemContexto === 'cache' && desatualizadoEm ? (
+        <p
+          role="note"
+          className="rounded-[var(--raio)] bg-[hsl(var(--atencao-sutil))] px-3 py-2 text-xs text-[hsl(var(--atencao))]"
+        >
+          Lista de candidatos salva no aparelho há mais de 2 dias. Conecte à rede quando puder para
+          atualizar.
+        </p>
+      ) : null}
 
       <IndicadorFilaOffline />
 
@@ -232,6 +240,7 @@ export default function PaginaEntrevista(): JSX.Element {
           idDomicilio={domicilio.id}
           enderecoResumido={domicilio.enderecoResumido}
           cargos={contexto.cargos}
+          candidatos={contexto.candidatos}
           idVersaoConsentimento={contexto.consentimento.id}
           textoConsentimento={contexto.consentimento.texto}
         />

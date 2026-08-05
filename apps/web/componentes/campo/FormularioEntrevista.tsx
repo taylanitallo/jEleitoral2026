@@ -1,22 +1,25 @@
 'use client';
 
 import { CheckCircle2, MapPin, ShieldCheck, TriangleAlert, UserRound } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Botao, EtiquetaClassificacao, TarjaUsoInterno, cn } from '@jeleitoral/ui';
 import {
   ClassificacaoEleitor,
   RotuloClassificacaoEleitor,
   type EntradaEntrevista,
+  type EntradaIntencaoVoto,
 } from '@jeleitoral/tipos';
 import { mascararTelefone, normalizarNomePessoa } from '@jeleitoral/utilitarios';
 import { api, ErroDaApi } from '@/lib/api';
 import { filaOffline } from '@/lib/filaOffline';
 import { useGeolocalizacao } from '@/lib/useGeolocalizacao';
+import { SeletorCandidato, type CandidatoDoCargo, type EscolhaIntencao } from './SeletorCandidato';
 
 interface CargoDisponivel {
   id: string;
   nome: string;
   quantidadeVotosPermitida: number;
+  digitosNumeroUrna: number;
 }
 
 interface Sugestao {
@@ -32,6 +35,7 @@ export interface PropriedadesFormularioEntrevista {
   idDomicilio: string;
   enderecoResumido: string;
   cargos: CargoDisponivel[];
+  candidatos?: Array<CandidatoDoCargo & { idCargo: string }>;
   idVersaoConsentimento: string;
   textoConsentimento: string;
   aoConcluir?: () => void;
@@ -61,6 +65,7 @@ export function FormularioEntrevista({
   idDomicilio,
   enderecoResumido,
   cargos,
+  candidatos,
   idVersaoConsentimento,
   textoConsentimento,
   aoConcluir,
@@ -69,7 +74,21 @@ export function FormularioEntrevista({
   const [apelido, definirApelido] = useState('');
   const [telefone, definirTelefone] = useState('');
   const [classificacao, definirClassificacao] = useState<ClassificacaoEleitor>('NAO_INFORMOU');
-  const [intencoes, definirIntencoes] = useState<Record<string, string>>({});
+  /*
+   * Um array de slots por cargo, em vez de um único valor.
+   *
+   * O Senado no Ceará tem 2 votos, e o formulário antigo tinha UM campo — a
+   * trigger `intencoes_validar_quantidade` já sabia recusar o excesso, mas a
+   * tela nunca permitia o segundo voto. Cada cargo aqui tem exatamente
+   * `quantidadeVotosPermitida` posições; slot vazio (`null`) simplesmente não
+   * vira linha ao salvar.
+   */
+  const [intencoes, definirIntencoes] = useState<Record<string, Array<EscolhaIntencao | null>>>(
+    () =>
+      Object.fromEntries(
+        cargos.map((cargo) => [cargo.id, Array(cargo.quantidadeVotosPermitida).fill(null)]),
+      ),
+  );
   const [observacoes, definirObservacoes] = useState('');
   const [recusouResponder, definirRecusou] = useState(false);
   const [consentiu, definirConsentiu] = useState(false);
@@ -79,6 +98,20 @@ export function FormularioEntrevista({
   const [iniciadoEm] = useState(() => Date.now());
 
   const { posicao, estado: estadoGps, solicitar: solicitarGps } = useGeolocalizacao();
+
+  const candidatosPorCargo = useMemo(() => {
+    const mapa = new Map<string, CandidatoDoCargo[]>();
+    // Defensivo: uma API mais antiga (deploy em andamento, cache de contexto
+    // salvo antes desta versão) pode não trazer `candidatos`. Sem isto, a tela
+    // quebra por inteiro em vez de cair para a lista vazia — que o
+    // `SeletorCandidato` já trata mostrando só as opções fixas e "Outro número".
+    for (const candidato of candidatos ?? []) {
+      const lista = mapa.get(candidato.idCargo) ?? [];
+      lista.push(candidato);
+      mapa.set(candidato.idCargo, lista);
+    }
+    return mapa;
+  }, [candidatos]);
 
   // --- Duplicidade -----------------------------------------------------------
   const verificarDuplicidade = useCallback(
@@ -111,7 +144,9 @@ export function FormularioEntrevista({
   }, [nome, verificarDuplicidade]);
 
   // --- Validação -------------------------------------------------------------
-  const temConteudo = recusouResponder || Object.values(intencoes).some((valor) => valor !== '');
+  const temConteudo =
+    recusouResponder ||
+    Object.values(intencoes).some((slots) => slots.some((slot) => slot !== null));
   const podeSalvar =
     normalizarNomePessoa(nome).length >= 3 && consentiu && temConteudo && !salvando;
 
@@ -147,14 +182,18 @@ export function FormularioEntrevista({
         dispositivo: navigator.userAgent.slice(0, 120),
         recusouResponder,
         observacoes: observacoes.trim() || undefined,
-        intencoes: Object.entries(intencoes)
-          .filter(([, numero]) => numero !== '')
-          .map(([idCargo, numero]) => ({
-            idCargo,
-            numeroDeclarado: numero,
-            grauCerteza: 3,
-            votoDefinido: false,
-          })),
+        intencoes: Object.entries(intencoes).flatMap<EntradaIntencaoVoto>(([idCargo, slots]) =>
+          slots
+            .filter((slot): slot is EscolhaIntencao => slot !== null)
+            .map((slot) => ({
+              idCargo,
+              idCandidato: slot.idCandidato,
+              numeroDeclarado: slot.numeroDeclarado,
+              tipo: slot.tipo,
+              grauCerteza: 3,
+              votoDefinido: false,
+            })),
+        ),
         votosDomicilio: [],
         status: 'CONCLUIDA',
       } as EntradaEntrevista;
@@ -178,7 +217,11 @@ export function FormularioEntrevista({
     definirApelido('');
     definirTelefone('');
     definirClassificacao('NAO_INFORMOU');
-    definirIntencoes({});
+    definirIntencoes(
+      Object.fromEntries(
+        cargos.map((cargo) => [cargo.id, Array(cargo.quantidadeVotosPermitida).fill(null)]),
+      ),
+    );
     definirObservacoes('');
     definirRecusou(false);
     definirConsentiu(false);
@@ -337,32 +380,51 @@ export function FormularioEntrevista({
         </label>
 
         {!recusouResponder
-          ? cargos.map((cargo) => (
-              <div key={cargo.id}>
-                <label
-                  htmlFor={`cargo-${cargo.id}`}
-                  className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
-                >
-                  {cargo.nome}
-                  {cargo.quantidadeVotosPermitida > 1
-                    ? ` — ${cargo.quantidadeVotosPermitida} votos`
-                    : ''}
-                </label>
-                <input
-                  id={`cargo-${cargo.id}`}
-                  value={intencoes[cargo.id] ?? ''}
-                  onChange={(evento) =>
-                    definirIntencoes((atual) => ({
-                      ...atual,
-                      [cargo.id]: evento.target.value.replace(/\D+/g, '').slice(0, 5),
-                    }))
-                  }
-                  inputMode="numeric"
-                  placeholder="Número na urna"
-                  className={classeCampo}
-                />
-              </div>
-            ))
+          ? cargos.map((cargo) => {
+              const slots = intencoes[cargo.id] ?? [];
+              const candidatosDoCargo = candidatosPorCargo.get(cargo.id) ?? [];
+
+              function definirSlot(indice: number, escolha: EscolhaIntencao | null): void {
+                definirIntencoes((atual) => {
+                  const lista = [...(atual[cargo.id] ?? [])];
+                  lista[indice] = escolha;
+                  return { ...atual, [cargo.id]: lista };
+                });
+              }
+
+              return (
+                <div key={cargo.id} className="flex flex-col gap-2">
+                  {slots.map((slot, indice) => (
+                    <div key={indice}>
+                      <label
+                        htmlFor={indice === 0 ? `cargo-${cargo.id}` : undefined}
+                        className="mb-1 block text-sm text-[hsl(var(--texto-secundario))]"
+                      >
+                        {cargo.nome}
+                        {/* Dois campos e não um rótulo com "2 votos": o
+                            eleitor cearense declara DOIS senadores distintos,
+                            e um único input só cabia um. */}
+                        {slots.length > 1 ? ` (${indice + 1}º voto)` : ''}
+                      </label>
+                      <SeletorCandidato
+                        idCargo={indice === 0 ? cargo.id : `${cargo.id}-${indice}`}
+                        candidatos={candidatosDoCargo}
+                        valor={slot}
+                        // O segundo voto de Senador não pode repetir quem já
+                        // foi escolhido no primeiro — é o par em interface do
+                        // índice único que o banco já aplica.
+                        excluir={slots
+                          .filter((_, i) => i !== indice)
+                          .map((s) => s?.idCandidato)
+                          .filter((id): id is string => Boolean(id))}
+                        digitosNumeroUrna={cargo.digitosNumeroUrna}
+                        aoEscolher={(escolha) => definirSlot(indice, escolha)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })
           : null}
       </fieldset>
 

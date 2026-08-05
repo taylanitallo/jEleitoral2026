@@ -165,6 +165,35 @@ export const RotuloStatusEntrevista: Record<StatusEntrevista, string> = {
 export const TipoVisita = z.enum(['PRIMEIRA', 'RETORNO', 'ENTREGA_MATERIAL']);
 export type TipoVisita = z.infer<typeof TipoVisita>;
 
+/**
+ * Natureza da intenção de voto declarada. Espelha `public.tipo_intencao`
+ * (migration 0028).
+ *
+ * `NAO_CADASTRADO` é o número que o eleitor declarou sem casar com nenhum
+ * candidato ativo — concorrente ainda não cadastrado, não erro. O trigger de
+ * resolução no banco é quem decide isto; o cliente só declara os tipos que
+ * não dependem de número (`BRANCO`, `NULO`, `INDECISO`) ou deixa o campo livre
+ * para o servidor resolver.
+ */
+export const TipoIntencao = z.enum([
+  'CANDIDATO',
+  'BRANCO',
+  'NULO',
+  'INDECISO',
+  'NAO_RESPONDEU',
+  'NAO_CADASTRADO',
+]);
+export type TipoIntencao = z.infer<typeof TipoIntencao>;
+
+export const RotuloTipoIntencao: Record<TipoIntencao, string> = {
+  CANDIDATO: 'Candidato',
+  BRANCO: 'Branco',
+  NULO: 'Nulo',
+  INDECISO: 'Ainda não decidiu',
+  NAO_RESPONDEU: 'Não quis dizer',
+  NAO_CADASTRADO: 'Número não cadastrado',
+};
+
 export const CanalConsentimento = z.enum(['VERBAL_REGISTRADO', 'ASSINATURA_EM_TELA', 'DIGITAL']);
 export type CanalConsentimento = z.infer<typeof CanalConsentimento>;
 

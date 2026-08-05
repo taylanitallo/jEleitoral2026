@@ -21,8 +21,17 @@ import type { EntradaEntrevista, ResultadoItemSincronizacao } from '@jeleitoral/
  */
 
 const NOME_BANCO = 'jeleitoral';
-const VERSAO_BANCO = 1;
+/*
+ * Versão 2: acrescenta o depósito `contextoCampo` (cache de cargos e
+ * candidatos para o formulário funcionar sem rede).
+ *
+ * NÃO tocar em `filaEntrevistas` neste upgrade. O IndexedDB preserva
+ * depósitos existentes ao subir de versão — mexer nele arriscaria coleta
+ * ainda não sincronizada de aparelhos que atualizarem o app em campo.
+ */
+const VERSAO_BANCO = 2;
 const DEPOSITO = 'filaEntrevistas';
+const DEPOSITO_CONTEXTO = 'contextoCampo';
 
 export type SituacaoItemFila = 'PENDENTE' | 'ENVIANDO' | 'ENVIADA' | 'ATENCAO';
 
@@ -60,7 +69,24 @@ function abrirBanco(): Promise<IDBDatabase> {
         deposito.createIndex('porSituacao', 'situacao', { unique: false });
         deposito.createIndex('porCampanha', 'idCampanha', { unique: false });
       }
+      if (!banco.objectStoreNames.contains(DEPOSITO_CONTEXTO)) {
+        banco.createObjectStore(DEPOSITO_CONTEXTO, { keyPath: 'idCampanha' });
+      }
     };
+    requisicao.onsuccess = () => resolver(requisicao.result);
+    requisicao.onerror = () => rejeitar(requisicao.error);
+  });
+}
+
+function executarEm<T>(
+  banco: IDBDatabase,
+  nomeDeposito: string,
+  modo: IDBTransactionMode,
+  operacao: (deposito: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
+  return new Promise((resolver, rejeitar) => {
+    const transacao = banco.transaction(nomeDeposito, modo);
+    const requisicao = operacao(transacao.objectStore(nomeDeposito));
     requisicao.onsuccess = () => resolver(requisicao.result);
     requisicao.onerror = () => rejeitar(requisicao.error);
   });
@@ -71,12 +97,7 @@ function executar<T>(
   modo: IDBTransactionMode,
   operacao: (deposito: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
-  return new Promise((resolver, rejeitar) => {
-    const transacao = banco.transaction(DEPOSITO, modo);
-    const requisicao = operacao(transacao.objectStore(DEPOSITO));
-    requisicao.onsuccess = () => resolver(requisicao.result);
-    requisicao.onerror = () => rejeitar(requisicao.error);
-  });
+  return executarEm(banco, DEPOSITO, modo, operacao);
 }
 
 function gerarIdentificador(): string {
@@ -106,6 +127,24 @@ export class FilaOffline {
   fechar(): void {
     this.banco?.close();
     this.banco = null;
+  }
+
+  /**
+   * Guarda o contexto de campo (cargos e candidatos) para o aparelho usar sem
+   * rede. É o que permite ao entrevistador escolher candidato pelo nome numa
+   * casa sem sinal — sem isto o formulário cairia de volta para o número
+   * digitado às cegas em toda área de sombra.
+   */
+  async gravarContexto<T extends { idCampanha: string }>(item: T): Promise<void> {
+    const banco = await this.obterBanco();
+    await executarEm(banco, DEPOSITO_CONTEXTO, 'readwrite', (deposito) => deposito.put(item));
+  }
+
+  async lerContexto<T>(idCampanha: string): Promise<T | undefined> {
+    const banco = await this.obterBanco();
+    return executarEm(banco, DEPOSITO_CONTEXTO, 'readonly', (deposito) =>
+      deposito.get(idCampanha),
+    ) as Promise<T | undefined>;
   }
 
   /**

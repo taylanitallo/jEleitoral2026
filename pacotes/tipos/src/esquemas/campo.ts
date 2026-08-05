@@ -4,6 +4,7 @@ import {
   ClassificacaoEleitor,
   NaturezaLevantamento,
   StatusEntrevista,
+  TipoIntencao,
 } from '../enums';
 import { Uuid } from '../comuns';
 
@@ -19,10 +20,22 @@ export const EntradaConsentimento = z.object({
 });
 export type EntradaConsentimento = z.infer<typeof EntradaConsentimento>;
 
+/**
+ * `idCandidato` e `numeroDeclarado` continuam OPCIONAIS de propósito — nunca
+ * tornar nenhum dos dois obrigatório.
+ *
+ * Há aparelhos com itens na fila offline gravados no formato anterior à
+ * migration 0028, sem `tipo` e sem `idCandidato`. Endurecer este contrato
+ * faria a fila inteira desses aparelhos ser recusada pela API — e um item
+ * recusado fica preso em `ATENCAO` sem UI de correção. Itens antigos sobem
+ * normalmente; o trigger de resolução no banco resolve pelo número. Manter
+ * esta compatibilidade até depois da eleição.
+ */
 export const EntradaIntencaoVoto = z.object({
   idCargo: Uuid,
   idCandidato: Uuid.optional(),
   numeroDeclarado: z.string().max(5).optional(),
+  tipo: TipoIntencao.default('NAO_RESPONDEU'),
   grauCerteza: z.number().int().min(1).max(5).default(3),
   votoDefinido: z.boolean().default(false),
 });

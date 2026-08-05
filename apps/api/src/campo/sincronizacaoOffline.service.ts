@@ -202,11 +202,14 @@ export class SincronizacaoOfflineService {
     const idEntrevista = criada[0]!.id;
 
     for (const intencao of entrada.intencoes) {
+      // `tipo` viaja explícito para a trigger de resolução (migration 0028)
+      // saber diferenciar "declarou branco" de "só mandou um número" — os dois
+      // chegam com `idCandidato` nulo, e só o `tipo` distingue.
       await conexao.query(
         `insert into public.intencoes_voto
            (id_organizacao, id_campanha, id_entrevista, id_cargo, id_candidato,
-            numero_declarado, grau_certeza, voto_definido)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            numero_declarado, tipo, grau_certeza, voto_definido)
+         values ($1, $2, $3, $4, $5, $6, $7::public.tipo_intencao, $8, $9)`,
         [
           claims.idOrganizacao,
           idCampanha,
@@ -214,6 +217,7 @@ export class SincronizacaoOfflineService {
           intencao.idCargo,
           intencao.idCandidato ?? null,
           intencao.numeroDeclarado ?? null,
+          intencao.tipo,
           intencao.grauCerteza,
           intencao.votoDefinido,
         ],
