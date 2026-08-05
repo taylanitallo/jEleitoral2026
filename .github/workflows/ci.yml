@@ -109,6 +109,10 @@ jobs:
         run: pnpm --filter @jeleitoral/api test:rls
       - name: Isolamento cruzado entre organizações e campanhas
         run: pnpm --filter @jeleitoral/api test:isolamento
+      # Triggers de campo: a resolução número → candidato só é testável contra um
+      # PostgreSQL de verdade. Mock provaria que o mock funciona.
+      - name: Regras de campo no banco
+        run: pnpm --filter @jeleitoral/api test:campo
 
   e2e:
     name: Fluxo de campo de ponta a ponta

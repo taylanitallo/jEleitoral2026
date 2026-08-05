@@ -19,7 +19,8 @@
     "usuario:senha": "node scripts/redefinirSenha.mjs",
     "provar:revogacao": "tsx scripts/provarRevogacao.ts",
     "banco:diagnosticar": "tsx scripts/diagnosticarBanco.ts",
-    "verificar:boot": "node scripts/verificarBoot.mjs"
+    "verificar:boot": "node scripts/verificarBoot.mjs",
+    "test:campo": "vitest run testes/resolucaoIntencao.spec.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
