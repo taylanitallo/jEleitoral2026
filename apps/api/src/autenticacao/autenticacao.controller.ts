@@ -18,6 +18,7 @@ import type { CookieOptions, Request, Response } from 'express';
 import { z } from 'zod';
 import { ClaimsUsuario } from '@jeleitoral/tipos';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
+import { BancoService } from '../banco/banco.service.js';
 import { carregarConfiguracao } from '../comum/configuracao.js';
 import { DispensaMfa, Publica } from './autenticacao.guard.js';
 import { Claims } from './claimsUsuario.decorator.js';
@@ -98,6 +99,7 @@ export class AutenticacaoController {
   constructor(
     private readonly servico: AutenticacaoService,
     private readonly auditoria: AuditoriaService,
+    private readonly banco: BancoService,
   ) {}
 
   /**
@@ -327,20 +329,70 @@ export class AutenticacaoController {
    * perfil não pode usar nem aparece.
    */
   @Get('sessao')
-  sessao(@Claims() claims: ClaimsUsuario): {
+  async sessao(@Claims() claims: ClaimsUsuario): Promise<{
     idUsuario: string;
     email: string;
     perfil: string;
     campanhas: string[];
+    campanhasDisponiveis: Array<{
+      id: string;
+      nome: string;
+      uf: string | null;
+      idMunicipio: number | null;
+      nomeMunicipio: string | null;
+      anoPleito: number;
+      ativa: boolean;
+    }>;
     permissoes: Record<string, string>;
     mfaVerificado: boolean;
     ehProvedor: boolean;
-  } {
+  }> {
+    /*
+     * `campanhasDisponiveis` entra AO LADO de `campanhas: string[]`, que
+     * continua intacto. `useSessao.ts:44` e qualquer outra coisa que eu não
+     * tenha visto ainda dependem do campo antigo; o novo é o que dá nome e
+     * município para o seletor de campanha na barra superior. O antigo sai
+     * de circulação só depois da eleição, quando trocar de campanha deixar de
+     * ser um risco a testar às pressas.
+     */
+    const campanhasDisponiveis =
+      claims.campanhas.length === 0
+        ? []
+        : await this.banco.executarComoUsuario(claims, async (conexao) => {
+            const { rows } = await conexao.query<{
+              id: string;
+              nome: string;
+              uf: string | null;
+              id_municipio_base: number | null;
+              nome_municipio: string | null;
+              ano_pleito: number;
+              ativa: boolean;
+            }>(
+              `select c.id, c.nome, c.uf, c.id_municipio_base, m.nome as nome_municipio,
+                      c.ano_pleito, c.ativa
+                 from public.campanhas c
+                 left join public.municipios m on m.id_ibge = c.id_municipio_base
+                where c.id = any($1::uuid[])
+                order by c.ativa desc, c.nome`,
+              [claims.campanhas],
+            );
+            return rows.map((linha) => ({
+              id: linha.id,
+              nome: linha.nome,
+              uf: linha.uf,
+              idMunicipio: linha.id_municipio_base,
+              nomeMunicipio: linha.nome_municipio,
+              anoPleito: linha.ano_pleito,
+              ativa: linha.ativa,
+            }));
+          });
+
     return {
       idUsuario: claims.sub,
       email: claims.email,
       perfil: claims.perfil,
       campanhas: claims.campanhas,
+      campanhasDisponiveis,
       permissoes: claims.permissoes,
       mfaVerificado: claims.mfaVerificado,
       // Provedor é quem está **fora** da árvore de inquilinos — é a mesma regra

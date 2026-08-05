@@ -22,7 +22,13 @@ export interface CandidatoContexto {
 
 export interface ContextoCampo {
   idCampanha: string;
-  campanha: { id: string; nome: string; uf: string | null; anoPleito: number };
+  campanha: {
+    id: string;
+    nome: string;
+    uf: string | null;
+    idMunicipio: number | null;
+    anoPleito: number;
+  };
   cargos: CargoContexto[];
   candidatos: CandidatoContexto[];
   consentimento: { id: string; versao: string; texto: string } | null;

@@ -60,13 +60,27 @@ export default function PaginaEntrevista(): JSX.Element {
   const [erro, definirErro] = useState<string | null>(null);
   const [domicilio, definirDomicilio] = useState<DomicilioResolvido | null>(null);
 
-  // Município único na UF é raro, mas quando a campanha é municipal a lista vem
-  // com um só — obrigar a escolher o óbvio é atrito puro em tela de celular.
+  /*
+   * A campanha É o município (migration 0029): com `idMunicipio` definido na
+   * campanha, o entrevistador não escolhe entre os 184 municípios do Ceará a
+   * cada porta — ele já sabe onde está.
+   *
+   * Fallback para a heurística antiga (lista com um só município) cobre a
+   * campanha estadual sem sede definida, e o `!municipioTravado` deixa o
+   * "outro município" (abaixo) vencer sem que este efeito o sobrescreva de
+   * volta no próximo render.
+   */
+  const idMunicipioDaCampanha = contexto?.campanha.idMunicipio ?? null;
+  const [municipioTravado, definirMunicipioTravado] = useState(false);
+
   useEffect(() => {
-    if (municipios?.length === 1 && !idMunicipio) {
+    if (municipioTravado || idMunicipio) return;
+    if (idMunicipioDaCampanha) {
+      definirIdMunicipio(String(idMunicipioDaCampanha));
+    } else if (municipios?.length === 1) {
       definirIdMunicipio(String(municipios[0]!.idIbge));
     }
-  }, [municipios, idMunicipio]);
+  }, [idMunicipioDaCampanha, municipios, idMunicipio, municipioTravado]);
 
   async function resolverEndereco(evento: React.FormEvent): Promise<void> {
     evento.preventDefault();
@@ -154,22 +168,41 @@ export default function PaginaEntrevista(): JSX.Element {
         >
           <p className="text-sm font-medium text-[hsl(var(--texto))]">Onde você está?</p>
 
-          <Campo id="municipio" rotulo="Município" obrigatorio>
-            <select
-              id="municipio"
-              className={classeControle}
-              value={idMunicipio}
-              onChange={(e) => definirIdMunicipio(e.target.value)}
-              required
-            >
-              <option value="">Selecione…</option>
-              {(municipios ?? []).map((municipio) => (
-                <option key={municipio.idIbge} value={municipio.idIbge}>
-                  {municipio.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
+          {idMunicipioDaCampanha && !municipioTravado ? (
+            <div className="flex items-center justify-between rounded-[var(--raio)] bg-[hsl(var(--fundo-sutil))] px-3 py-2 text-sm">
+              <span className="text-[hsl(var(--texto))]">
+                {(municipios ?? []).find((m) => m.idIbge === idMunicipioDaCampanha)?.nome ??
+                  'Município da campanha'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  definirMunicipioTravado(true);
+                  definirIdMunicipio('');
+                }}
+                className="text-xs text-[hsl(var(--acento))] hover:underline"
+              >
+                Outro município
+              </button>
+            </div>
+          ) : (
+            <Campo id="municipio" rotulo="Município" obrigatorio>
+              <select
+                id="municipio"
+                className={classeControle}
+                value={idMunicipio}
+                onChange={(e) => definirIdMunicipio(e.target.value)}
+                required
+              >
+                <option value="">Selecione…</option>
+                {(municipios ?? []).map((municipio) => (
+                  <option key={municipio.idIbge} value={municipio.idIbge}>
+                    {municipio.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          )}
 
           <Campo id="bairro" rotulo="Bairro" obrigatorio>
             <input

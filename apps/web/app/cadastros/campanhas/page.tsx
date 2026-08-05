@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   BarraAcoes,
   Botao,
@@ -22,8 +23,16 @@ interface Campanha {
   nome: string;
   abrangencia: AbrangenciaCampanha;
   uf: string | null;
+  id_municipio_base: number | null;
+  nome_municipio: string | null;
   ano_pleito: number;
   ativa: boolean;
+}
+
+interface Municipio {
+  idIbge: number;
+  nome: string;
+  uf: string;
 }
 
 interface Pagina {
@@ -42,16 +51,29 @@ export default function PaginaCampanhas(): JSX.Element {
   const [formularioAberto, definirFormularioAberto] = useState(false);
   const [salvando, definirSalvando] = useState(false);
   const [erroSalvar, definirErroSalvar] = useState<string | null>(null);
+  // Fora do FormData porque o município depende da UF escolhida — o select de
+  // município é alimentado sob demanda, e não dá para ler `defaultValue` de um
+  // <select> cujas opções ainda não chegaram.
+  const [ufFormulario, definirUfFormulario] = useState('');
+  const [idMunicipio, definirIdMunicipio] = useState('');
+
+  const { dados: municipios } = useListagem<Municipio[]>(
+    ufFormulario ? `/territorio/municipios?uf=${ufFormulario}` : null,
+  );
 
   function abrirNova(): void {
     definirEmEdicao(null);
     definirErroSalvar(null);
+    definirUfFormulario('');
+    definirIdMunicipio('');
     definirFormularioAberto(true);
   }
 
   function abrirEdicao(campanha: Campanha): void {
     definirEmEdicao(campanha);
     definirErroSalvar(null);
+    definirUfFormulario(campanha.uf ?? '');
+    definirIdMunicipio(campanha.id_municipio_base ? String(campanha.id_municipio_base) : '');
     definirFormularioAberto(true);
   }
 
@@ -66,6 +88,8 @@ export default function PaginaCampanhas(): JSX.Element {
       // UF só faz sentido fora do âmbito federal; enviar sempre gravaria um
       // estado numa campanha presidencial e bagunçaria os recortes do painel.
       uf: abrangencia === 'FEDERAL' ? undefined : String(formulario.get('uf')) || undefined,
+      // Idem para município: só existe dentro de uma UF escolhida.
+      idMunicipioBase: abrangencia === 'FEDERAL' || !idMunicipio ? undefined : Number(idMunicipio),
       anoPleito: Number(formulario.get('anoPleito')),
     };
 
@@ -150,11 +174,43 @@ export default function PaginaCampanhas(): JSX.Element {
           </Campo>
 
           <Campo id="uf" rotulo="UF" dica="Deixe em branco para campanha federal.">
-            <select id="uf" name="uf" defaultValue={emEdicao?.uf ?? ''} className={classeControle}>
+            <select
+              id="uf"
+              name="uf"
+              value={ufFormulario}
+              onChange={(evento) => {
+                definirUfFormulario(evento.target.value);
+                // Trocar de UF invalida o município escolhido — um município
+                // do Ceará não existe na lista da Bahia.
+                definirIdMunicipio('');
+              }}
+              className={classeControle}
+            >
               <option value="">—</option>
               {opcoes.uf.map((opcao) => (
                 <option key={opcao.valor} value={opcao.valor}>
                   {opcao.rotulo}
+                </option>
+              ))}
+            </select>
+          </Campo>
+
+          <Campo
+            id="idMunicipio"
+            rotulo="Município"
+            dica="A campanha É o município — é o que orienta o formulário de campo e os filtros."
+          >
+            <select
+              id="idMunicipio"
+              value={idMunicipio}
+              onChange={(evento) => definirIdMunicipio(evento.target.value)}
+              disabled={!ufFormulario}
+              className={classeControle}
+            >
+              <option value="">{ufFormulario ? 'Selecione…' : 'Escolha a UF primeiro'}</option>
+              {(municipios ?? []).map((municipio) => (
+                <option key={municipio.idIbge} value={municipio.idIbge}>
+                  {municipio.nome}
                 </option>
               ))}
             </select>
@@ -170,7 +226,15 @@ export default function PaginaCampanhas(): JSX.Element {
             <Botao type="submit" carregando={salvando}>
               {emEdicao ? 'Salvar alterações' : 'Criar campanha'}
             </Botao>
-            <Botao type="button" variante="sutil" onClick={() => definirFormularioAberto(false)}>
+            <Botao
+              type="button"
+              variante="sutil"
+              onClick={() => {
+                definirFormularioAberto(false);
+                definirUfFormulario('');
+                definirIdMunicipio('');
+              }}
+            >
               Cancelar
             </Botao>
           </div>
@@ -203,6 +267,11 @@ export default function PaginaCampanhas(): JSX.Element {
               render: (linha) => RotuloAbrangenciaCampanha[linha.abrangencia] ?? linha.abrangencia,
             },
             { chave: 'uf', rotulo: 'UF', render: (linha) => linha.uf ?? '—' },
+            {
+              chave: 'municipio',
+              rotulo: 'Município',
+              render: (linha) => linha.nome_municipio ?? '—',
+            },
             { chave: 'ano', rotulo: 'Pleito', numerico: true, render: (linha) => linha.ano_pleito },
             {
               chave: 'ativa',
@@ -217,6 +286,11 @@ export default function PaginaCampanhas(): JSX.Element {
                   <Botao variante="sutil" tamanho="pequeno" onClick={() => abrirEdicao(linha)}>
                     Editar
                   </Botao>
+                  <Link href={`/cadastros/campanhas/${linha.id}/cargos`}>
+                    <Botao variante="sutil" tamanho="pequeno">
+                      Cargos
+                    </Botao>
+                  </Link>
                   {linha.ativa ? (
                     <Botao
                       variante="sutil"

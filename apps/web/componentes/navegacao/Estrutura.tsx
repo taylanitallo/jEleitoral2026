@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { Botao, cn, useTema } from '@jeleitoral/ui';
 import { api } from '@/lib/api';
 import { grupoDaRota, gruposVisiveis, ICONE_POR_ROTA } from './modulos';
+import { SeletorCampanha } from './SeletorCampanha';
+import { useContextoSessao } from './ProvedorSessao';
 
 const CHAVE_GRUPOS_ABERTOS = 'jeleitoral.modulos-abertos';
 
@@ -41,7 +43,7 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
   const caminho = usePathname();
   const roteador = useRouter();
   const { temaAplicado, definirPreferencia } = useTema();
-  const [sessao, definirSessao] = useState<Sessao | null>(null);
+  const { sessao } = useContextoSessao();
   const [gavetaAberta, definirGavetaAberta] = useState(false);
   /*
    * Quais grupos estão abertos.
@@ -54,14 +56,6 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
   const [abertosSalvos, definirAbertosSalvos] = useState<string[] | null>(null);
 
   const naTelaDeEntrada = caminho.startsWith('/entrar') || caminho.startsWith('/offline');
-
-  useEffect(() => {
-    if (naTelaDeEntrada) return;
-    api
-      .obter<Sessao>('/autenticacao/sessao')
-      .then(definirSessao)
-      .catch(() => definirSessao(null));
-  }, [caminho, naTelaDeEntrada]);
 
   // Navegou: fecha a gaveta. Sem isto, no celular o menu cobre a tela que a
   // pessoa acabou de escolher.
@@ -290,22 +284,28 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior: só existe no celular, para abrir a gaveta. */}
+        {/*
+         * Barra superior: antes só existia no celular, para abrir a gaveta.
+         * Passa a existir sempre — é onde mora o seletor de campanha, que
+         * precisa estar visível também no desktop.
+         */}
         <header
           data-imprimir="ocultar"
-          className="flex items-center gap-2 border-b border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-3 py-2 lg:hidden"
+          className="flex items-center gap-2 border-b border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] px-3 py-2"
         >
           <Botao
             variante="sutil"
             tamanho="icone"
             onClick={() => definirGavetaAberta(true)}
             aria-label="Abrir menu"
+            className="lg:hidden"
           >
             <Menu />
           </Botao>
-          <span className="text-sm font-semibold text-[hsl(var(--texto))]">
+          <span className="flex-1 truncate text-sm font-semibold text-[hsl(var(--texto))]">
             {grupoAtivo?.rotulo ?? 'jEleitoral'}
           </span>
+          <SeletorCampanha />
         </header>
 
         {abas.length > 1 ? (

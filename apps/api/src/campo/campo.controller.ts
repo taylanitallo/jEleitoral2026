@@ -56,7 +56,13 @@ export class CampoController {
     @Claims() claims: ClaimsUsuario,
     @Query() consulta: unknown,
   ): Promise<{
-    campanha: { id: string; nome: string; uf: string | null; anoPleito: number };
+    campanha: {
+      id: string;
+      nome: string;
+      uf: string | null;
+      idMunicipio: number | null;
+      anoPleito: number;
+    };
     cargos: Array<{
       id: string;
       nome: string;
@@ -81,8 +87,11 @@ export class CampoController {
         id: string;
         nome: string;
         uf: string | null;
+        id_municipio_base: number | null;
         ano_pleito: number;
-      }>('select id, nome, uf, ano_pleito from public.campanhas where id = $1', [idCampanha]);
+      }>('select id, nome, uf, id_municipio_base, ano_pleito from public.campanhas where id = $1', [
+        idCampanha,
+      ]);
 
       const campanha = campanhas[0];
       if (!campanha) {
@@ -90,34 +99,51 @@ export class CampoController {
       }
 
       /*
-       * Nas eleições gerais o eleitor vota nos cinco cargos, e a campanha
-       * pergunta sobre todos — mesmo a que disputa só uma vaga. Saber que o
-       * eleitor é do candidato a estadual mas não do de governador é
-       * exatamente o tipo de informação que orienta palanque.
-       *
-       * `Deputado Distrital` só existe no Distrito Federal, e lá substitui o
-       * estadual. Oferecer os dois faria o entrevistador escolher entre cargos
-       * que não coexistem em urna nenhuma.
+       * Cargos DECLARADOS pela campanha (migration 0029), com queda para a
+       * regra antiga quando não há linha nenhuma em `campanha_cargos` — uma
+       * campanha criada antes desta migration, ou cuja semente falhou por
+       * qualquer motivo, continua funcionando. Não remover esta queda até
+       * 2027: é a rede de segurança contra a tela ficar sem cargo nenhum.
        */
-      const ehDistritoFederal = campanha.uf === 'DF';
-      const { rows: cargos } = await conexao.query<{
+      const { rows: declarados } = await conexao.query<{
         id: string;
         nome: string;
         quantidade_votos_permitida: number;
         digitos_numero_urna: number;
       }>(
-        `select id, nome, quantidade_votos_permitida, digitos_numero_urna
-           from public.cargos
-          where nome <> $1
-          order by case nome
-                     when 'Presidente' then 1
-                     when 'Governador' then 2
-                     when 'Senador' then 3
-                     when 'Deputado Federal' then 4
-                     else 5
-                   end`,
-        [ehDistritoFederal ? 'Deputado Estadual' : 'Deputado Distrital'],
+        `select cg.id, cg.nome, cg.quantidade_votos_permitida, cg.digitos_numero_urna
+           from public.campanha_cargos cc
+           join public.cargos cg on cg.id = cc.id_cargo
+          where cc.id_campanha = $1
+          order by cc.ordem`,
+        [idCampanha],
       );
+
+      let cargos = declarados;
+      if (cargos.length === 0) {
+        // Nas eleições gerais o eleitor vota nos cinco cargos. `Deputado
+        // Distrital` só existe no Distrito Federal, e lá substitui o estadual.
+        const ehDistritoFederal = campanha.uf === 'DF';
+        const { rows } = await conexao.query<{
+          id: string;
+          nome: string;
+          quantidade_votos_permitida: number;
+          digitos_numero_urna: number;
+        }>(
+          `select id, nome, quantidade_votos_permitida, digitos_numero_urna
+             from public.cargos
+            where nome <> $1
+            order by case nome
+                       when 'Presidente' then 1
+                       when 'Governador' then 2
+                       when 'Senador' then 3
+                       when 'Deputado Federal' then 4
+                       else 5
+                     end`,
+          [ehDistritoFederal ? 'Deputado Estadual' : 'Deputado Distrital'],
+        );
+        cargos = rows;
+      }
 
       /*
        * Candidatos da campanha, para o entrevistador escolher pelo NOME.
@@ -163,6 +189,7 @@ export class CampoController {
           id: campanha.id,
           nome: campanha.nome,
           uf: campanha.uf,
+          idMunicipio: campanha.id_municipio_base,
           anoPleito: campanha.ano_pleito,
         },
         cargos: cargos.map((cargo) => ({

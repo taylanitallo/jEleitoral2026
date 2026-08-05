@@ -1,49 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { api } from './api';
+import { useContextoSessao, type SessaoCompleta } from '@/componentes/navegacao/ProvedorSessao';
 
-export interface Sessao {
-  idUsuario: string;
-  email: string;
-  perfil: string;
-  campanhas: string[];
-  permissoes: Record<string, string>;
-  mfaVerificado: boolean;
-  /** Verdadeiro para o time do provedor, que vive fora da árvore de inquilinos. */
-  ehProvedor: boolean;
-}
+export type Sessao = SessaoCompleta;
 
 /**
  * Sessão do usuário autenticado.
  *
- * As telas dependem disto para saber **em qual campanha** operam. Antes elas
- * carregavam um identificador fixo no código — o painel consultava uma campanha
- * que o usuário não tinha, e o resultado era uma tela vazia que parecia falha de
- * login.
+ * A leitura de verdade agora mora em `<ProvedorSessao>`, montado uma vez na
+ * raiz — este hook só repassa o contexto. A ASSINATURA fica igual à de antes
+ * de propósito: as telas que já chamam `useSessao()` continuam funcionando
+ * sem mudar uma linha.
  *
- * Quando houver troca de campanha na barra superior, ela grava a escolha aqui;
- * por enquanto vale a primeira do token.
+ * A campanha ativa é a lembrada em `localStorage` (troca pela barra
+ * superior); sem escolha salva, vale a primeira do token.
  */
 export function useSessao(): {
   sessao: Sessao | null;
   idCampanha: string | null;
   carregando: boolean;
 } {
-  const [sessao, definirSessao] = useState<Sessao | null>(null);
-  const [carregando, definirCarregando] = useState(true);
-
-  useEffect(() => {
-    api
-      .obter<Sessao>('/autenticacao/sessao')
-      .then(definirSessao)
-      .catch(() => definirSessao(null))
-      .finally(() => definirCarregando(false));
-  }, []);
-
-  return {
-    sessao,
-    idCampanha: sessao?.campanhas[0] ?? null,
-    carregando,
-  };
+  const { sessao, idCampanha, carregando } = useContextoSessao();
+  return { sessao, idCampanha, carregando };
 }

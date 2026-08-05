@@ -28,9 +28,22 @@ interface Campanha {
   nome: string;
   abrangencia: string;
   uf: string | null;
+  id_municipio_base: number | null;
   ano_pleito: number;
   ativa: boolean;
 }
+
+interface CampanhaListada extends Campanha {
+  nome_municipio: string | null;
+}
+
+const EntradaCargosCampanha = z.array(
+  z.object({
+    idCargo: Uuid,
+    disputa: z.boolean(),
+    ordem: z.number().int().min(0).max(99),
+  }),
+);
 
 /**
  * CRUD de campanhas — serve de modelo para os demais módulos.
@@ -52,14 +65,16 @@ export class CampanhasController {
   async listar(
     @Claims() claims: ClaimsUsuario,
     @Query() consulta: unknown,
-  ): Promise<PaginaDe<Campanha>> {
+  ): Promise<PaginaDe<CampanhaListada>> {
     const parametros = ParametrosPaginacao.parse(consulta);
     return this.banco.executarComoUsuario(claims, async (conexao) => {
-      const { rows } = await conexao.query<Campanha & { total: string }>(
-        `select id, nome, abrangencia, uf, ano_pleito, ativa,
+      const { rows } = await conexao.query<CampanhaListada & { total: string }>(
+        `select c.id, c.nome, c.abrangencia, c.uf, c.id_municipio_base, m.nome as nome_municipio,
+                c.ano_pleito, c.ativa,
                 count(*) over () as total
-         from public.campanhas
-         order by ano_pleito desc, nome
+         from public.campanhas c
+         left join public.municipios m on m.id_ibge = c.id_municipio_base
+         order by c.ano_pleito desc, c.nome
          limit $1 offset $2`,
         [parametros.limite, (parametros.pagina - 1) * parametros.limite],
       );
@@ -86,7 +101,7 @@ export class CampanhasController {
         `insert into public.campanhas
            (id_organizacao, nome, abrangencia, uf, id_municipio_base, ano_pleito)
          values ($1, $2, $3, $4, $5, $6)
-         returning id, nome, abrangencia, uf, ano_pleito, ativa`,
+         returning id, nome, abrangencia, uf, id_municipio_base, ano_pleito, ativa`,
         [
           // Vem do token, sempre. Não há parâmetro de entrada para isto.
           claims.idOrganizacao,
@@ -127,7 +142,8 @@ export class CampanhasController {
 
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows: antes } = await conexao.query<Campanha>(
-        'select id, nome, abrangencia, uf, ano_pleito, ativa from public.campanhas where id = $1',
+        `select id, nome, abrangencia, uf, id_municipio_base, ano_pleito, ativa
+           from public.campanhas where id = $1`,
         [idCampanha],
       );
       if (!antes[0]) {
@@ -136,19 +152,26 @@ export class CampanhasController {
         throw Object.assign(new Error('Campanha não encontrada.'), { code: '42501' });
       }
 
+      /*
+       * `id_municipio_base` entrava no Zod desde sempre e o UPDATE o
+       * ignorava — a campanha nunca ganhava o município depois de criada. É
+       * a coluna que a migration 0029 finalmente amarrou a uma FK real.
+       */
       const { rows } = await conexao.query<Campanha>(
         `update public.campanhas
             set nome = coalesce($2, nome),
                 abrangencia = coalesce($3, abrangencia),
                 uf = coalesce($4, uf),
-                ano_pleito = coalesce($5, ano_pleito)
+                id_municipio_base = coalesce($5, id_municipio_base),
+                ano_pleito = coalesce($6, ano_pleito)
           where id = $1
-        returning id, nome, abrangencia, uf, ano_pleito, ativa`,
+        returning id, nome, abrangencia, uf, id_municipio_base, ano_pleito, ativa`,
         [
           idCampanha,
           entrada.nome ?? null,
           entrada.abrangencia ?? null,
           entrada.uf ?? null,
+          entrada.idMunicipioBase ?? null,
           entrada.anoPleito ?? null,
         ],
       );
@@ -166,6 +189,101 @@ export class CampanhasController {
       });
 
       return rows[0]!;
+    });
+  }
+
+  /**
+   * Cargos que a campanha inclui no formulário de campo.
+   *
+   * `campo.ler`, e não `campanhas.gerenciar`: o entrevistador precisa desta
+   * lista para montar o formulário, e não deveria precisar de permissão para
+   * administrar campanhas só para ler o que a própria campanha já disputa.
+   */
+  @Get(':id/cargos')
+  @ExigePermissao('campo.ler')
+  async listarCargos(
+    @Claims() claims: ClaimsUsuario,
+    @Param('id') id: string,
+  ): Promise<Array<{ idCargo: string; nome: string; disputa: boolean; ordem: number }>> {
+    const idCampanha = Uuid.parse(id);
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query<{
+        id_cargo: string;
+        nome: string;
+        disputa: boolean;
+        ordem: number;
+      }>(
+        `select cc.id_cargo, cg.nome, cc.disputa, cc.ordem
+           from public.campanha_cargos cc
+           join public.cargos cg on cg.id = cc.id_cargo
+          where cc.id_campanha = $1
+          order by cc.ordem`,
+        [idCampanha],
+      );
+      return rows.map((linha) => ({
+        idCargo: linha.id_cargo,
+        nome: linha.nome,
+        disputa: linha.disputa,
+        ordem: linha.ordem,
+      }));
+    });
+  }
+
+  /**
+   * Substitui o conjunto de cargos da campanha numa transação.
+   *
+   * Substituição inteira, e não PATCH item a item: a tela envia a lista
+   * completa (é uma tabela de checkbox com poucas linhas — no máximo os
+   * cargos gerais), e um conjunto parcial deixaria cargo órfão sem ninguém
+   * perceber.
+   */
+  @Put(':id/cargos')
+  @ExigePermissao('campanhas.gerenciar', 'CAMPANHA')
+  async definirCargos(
+    @Claims() claims: ClaimsUsuario,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+    @Req() requisicao: Request,
+  ): Promise<{ total: number }> {
+    const idCampanha = Uuid.parse(id);
+    const entrada = EntradaCargosCampanha.parse(corpo);
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows: antes } = await conexao.query(
+        `select cc.id_cargo, cg.nome, cc.disputa, cc.ordem
+           from public.campanha_cargos cc
+           join public.cargos cg on cg.id = cc.id_cargo
+          where cc.id_campanha = $1
+          order by cc.ordem`,
+        [idCampanha],
+      );
+
+      await conexao.query('delete from public.campanha_cargos where id_campanha = $1', [
+        idCampanha,
+      ]);
+
+      for (const cargo of entrada) {
+        await conexao.query(
+          `insert into public.campanha_cargos
+             (id_organizacao, id_campanha, id_cargo, disputa, ordem)
+           values ($1, $2, $3, $4, $5)`,
+          [claims.idOrganizacao, idCampanha, cargo.idCargo, cargo.disputa, cargo.ordem],
+        );
+      }
+
+      await this.auditoria.registrarNaTransacao(conexao, claims, {
+        acao: 'ALTERAR',
+        entidade: 'campanha_cargos',
+        idEntidade: idCampanha,
+        idCampanha,
+        dadosAntes: { cargos: antes },
+        dadosDepois: { cargos: entrada },
+        ip: requisicao.ip ?? null,
+        userAgent: requisicao.headers['user-agent'] ?? null,
+        idCorrelacao: requisicao.idCorrelacao ?? null,
+      });
+
+      return { total: entrada.length };
     });
   }
 
