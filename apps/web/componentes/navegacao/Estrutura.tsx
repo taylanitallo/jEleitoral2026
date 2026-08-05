@@ -43,6 +43,15 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
   const { temaAplicado, definirPreferencia } = useTema();
   const [sessao, definirSessao] = useState<Sessao | null>(null);
   const [gavetaAberta, definirGavetaAberta] = useState(false);
+  /*
+   * Quais grupos estão abertos.
+   *
+   * `null` enquanto a preferência não foi lida: `localStorage` não existe no
+   * servidor, e ler durante a renderização daria divergência de hidratação. Até
+   * carregar, vale a regra do grupo ativo — que é o que a pessoa quer ver de
+   * qualquer forma.
+   */
+  const [abertosSalvos, definirAbertosSalvos] = useState<string[] | null>(null);
 
   const naTelaDeEntrada = caminho.startsWith('/entrar') || caminho.startsWith('/offline');
 
@@ -58,28 +67,11 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
   // pessoa acabou de escolher.
   useEffect(() => definirGavetaAberta(false), [caminho]);
 
-  if (naTelaDeEntrada) return <>{children}</>;
-
-  async function sair(): Promise<void> {
-    await api.enviar('/autenticacao/sair', {}).catch(() => undefined);
-    roteador.replace('/entrar');
-  }
-
   const grupos = gruposVisiveis(sessao?.permissoes ?? null);
   const grupoAtivo = grupoDaRota(caminho);
   // As abas saem da lista JÁ FILTRADA por permissão, e não da árvore completa:
   // senão apareceria aba para uma tela que a API recusaria.
   const abas = grupos.find((grupo) => grupo.id === grupoAtivo?.id)?.itens ?? [];
-
-  /*
-   * Quais grupos estão abertos.
-   *
-   * `null` enquanto a preferência não foi lida: `localStorage` não existe no
-   * servidor, e ler durante a renderização daria divergência de hidratação. Até
-   * carregar, vale a regra do grupo ativo — que é o que a pessoa quer ver de
-   * qualquer forma.
-   */
-  const [abertosSalvos, definirAbertosSalvos] = useState<string[] | null>(null);
 
   useEffect(() => {
     try {
@@ -103,6 +95,17 @@ export function Estrutura({ children }: { children: React.ReactNode }): JSX.Elem
       return proximo;
     });
   }, [grupoAtivo]);
+
+  // Hooks precisam correr sempre na mesma ordem — o retorno antecipado só
+  // pode vir depois de todos eles, senão a navegação client-side para/de
+  // `/entrar` muda a contagem de hooks do MESMO componente montado e o React
+  // derruba a tela com "Rendered fewer hooks than expected".
+  if (naTelaDeEntrada) return <>{children}</>;
+
+  async function sair(): Promise<void> {
+    await api.enviar('/autenticacao/sair', {}).catch(() => undefined);
+    roteador.replace('/entrar');
+  }
 
   const estaAberto = (idGrupo: string): boolean =>
     abertosSalvos === null ? grupoAtivo?.id === idGrupo : abertosSalvos.includes(idGrupo);
