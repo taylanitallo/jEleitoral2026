@@ -57,7 +57,7 @@ const RELATORIOS = {
              round(avg(ent.duracao_segundos)) as duracao_media,
              (select count(*) from public.alertas_coleta a
                where a.id_usuario_avaliado = u.id) as alertas
-        from public.entrevistas ent
+        from public.entrevistas_vigentes ent
         join public.usuarios u on u.id = ent.id_usuario_entrevistador
        where ent.status in ('CONCLUIDA', 'VALIDADA') and ${predicado}
        group by u.id, u.nome order by entrevistas desc`,

@@ -104,18 +104,20 @@ export class ProjecaoService {
       );
 
       // Intenções individuais e declarações por domicílio, unificadas para o
-      // motor, que aplica pesos diferentes a cada natureza.
+      // motor, que aplica pesos diferentes a cada natureza. `entrevistas_vigentes`
+      // (não `entrevistas`): a intenção de uma versão retificada e superada não
+      // pode entrar na projeção — só a versão vigente da cadeia.
       const { rows: intencoes } = await conexao.query<LinhaIntencao>(
         `select i.grau_certeza, false as por_domicilio, 1 as quantidade
            from public.intencoes_voto i
-           join public.entrevistas ent on ent.id = i.id_entrevista
+           join public.entrevistas_vigentes ent on ent.id = i.id_entrevista
            join public.entrevistados e on e.id = ent.id_entrevistado
           where i.id_campanha = $1 and i.id_candidato = $2 and e.id_secao = $3
             and ent.status in ('CONCLUIDA', 'VALIDADA')
          union all
          select 3 as grau_certeza, true as por_domicilio, v.quantidade_declarada as quantidade
            from public.votos_domicilio v
-           join public.entrevistas ent on ent.id = v.id_entrevista
+           join public.entrevistas_vigentes ent on ent.id = v.id_entrevista
            join public.entrevistados e on e.id = ent.id_entrevistado
           where v.id_campanha = $1 and v.id_candidato = $2 and e.id_secao = $3
             and ent.status in ('CONCLUIDA', 'VALIDADA')`,
@@ -125,7 +127,7 @@ export class ProjecaoService {
       const { rows: validas } = await conexao.query<{ total: string }>(
         `select count(*) as total
            from public.intencoes_voto i
-           join public.entrevistas ent on ent.id = i.id_entrevista
+           join public.entrevistas_vigentes ent on ent.id = i.id_entrevista
            join public.entrevistados e on e.id = ent.id_entrevistado
           where i.id_campanha = $1 and i.id_cargo = $2 and e.id_secao = $3
             and ent.status in ('CONCLUIDA', 'VALIDADA')`,

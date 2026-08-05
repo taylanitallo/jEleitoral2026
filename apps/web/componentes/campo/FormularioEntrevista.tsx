@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, MapPin, ShieldCheck, TriangleAlert, UserRound } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Botao, EtiquetaClassificacao, TarjaUsoInterno, cn } from '@jeleitoral/ui';
 import {
@@ -11,6 +12,7 @@ import {
 } from '@jeleitoral/tipos';
 import { mascararTelefone, normalizarNomePessoa } from '@jeleitoral/utilitarios';
 import { api, ErroDaApi } from '@/lib/api';
+import { enviarLoteEntrevistas } from '@/lib/enviarLoteEntrevistas';
 import { filaOffline } from '@/lib/filaOffline';
 import { useGeolocalizacao } from '@/lib/useGeolocalizacao';
 import { SeletorCandidato, type CandidatoDoCargo, type EscolhaIntencao } from './SeletorCandidato';
@@ -200,6 +202,19 @@ export function FormularioEntrevista({
 
       await filaOffline.enfileirar(idCampanha, entrevista);
 
+      if (navigator.onLine) {
+        // Dispara aqui, e não só espera o `IndicadorFilaOffline`: aquele
+        // componente só sincroniza sozinho a cada 2 minutos, ao montar ou ao
+        // reconectar — nenhum desses gatilhos reage a este `enfileirar`. Sem
+        // isto, "está subindo para o servidor" era uma frase sem envio
+        // nenhum por trás, por até 2 minutos. Sem `await`: a confirmação e a
+        // limpeza do formulário não podem esperar a rede — o indicador
+        // mostra o resultado, e uma falha aqui vira item ATENCAO lá.
+        void filaOffline
+          .sincronizar(enviarLoteEntrevistas)
+          .then(() => filaOffline.limparEnviados());
+      }
+
       definirConfirmacao(
         navigator.onLine
           ? 'Entrevista salva. Está subindo para o servidor.'
@@ -252,7 +267,20 @@ export function FormularioEntrevista({
           className="flex items-center gap-2 rounded-[var(--raio)] bg-[hsl(var(--apoiador-sutil))] px-3 py-2 text-sm text-[hsl(var(--apoiador))]"
         >
           <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-          {confirmacao}
+          <span className="flex-1">{confirmacao}</span>
+          {/*
+           * Link para o registro, e não navegação automática para lá. A
+           * entrevista fica na fila local até sincronizar — antes disso não
+           * existe uma página de detalhe para navegar. Sair da tela quebraria
+           * também o fluxo de campo ("próxima casa direto"), que o comentário
+           * deste componente já defende como prioridade.
+           */}
+          <Link
+            href="/campo/entrevistas"
+            className="shrink-0 whitespace-nowrap text-xs underline underline-offset-2 hover:no-underline"
+          >
+            Ver registro
+          </Link>
         </p>
       ) : null}
 

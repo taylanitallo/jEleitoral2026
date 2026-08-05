@@ -147,6 +147,70 @@ test.describe('painel', () => {
   });
 });
 
+test.describe('registro de entrevistas', () => {
+  /*
+   * Cobre a Fase 4 de ponta a ponta pela interface: registra uma entrevista,
+   * abre no registro, entra no detalhe, vê a aba de histórico. Não retifica
+   * por aqui — a retificação já é exercitada por
+   * `apps/api/testes/entrevistaImutavel.spec.ts` contra o banco real, e
+   * duplicar em E2E só somaria tempo de execução sem cobrir risco novo.
+   */
+  test('a entrevista salva aparece no registro e abre com aba de histórico', async ({ page }) => {
+    await abrirFormulario(page);
+    const nome = `E2E Registro ${Date.now()}`;
+    await page.getByLabel('Nome').fill(nome);
+    await preencherPrimeiraIntencao(page);
+    await page.getByRole('checkbox', { name: /li o termo/i }).check();
+    await page.getByRole('button', { name: /salvar entrevista/i }).click();
+
+    // A fila offline sincroniza sozinha, mas só no próximo ciclo (2 minutos)
+    // ou quando alguém clica "Enviar agora" — sem forçar isso aqui, o teste
+    // ficaria esperando até 2 minutos. `waitForResponse` é o sinal
+    // inequívoco de que o servidor confirmou, sem depender de texto que
+    // também aparece na mensagem de confirmação do formulário.
+    //
+    // O texto muda com `navigator.onLine`: este teste roda online, então a
+    // mensagem é "salva... subindo", não "salva no aparelho" (essa é da
+    // simulação offline em outro teste). "salva" é o que as duas têm em comum.
+    await expect(page.getByText(/entrevista salva/i).first()).toBeVisible({ timeout: 15_000 });
+    const respostaSincronizacao = page.waitForResponse(
+      (resposta) => resposta.url().includes('/campo/sincronizar') && resposta.ok(),
+      { timeout: 20_000 },
+    );
+    const enviarAgora = page.getByRole('button', { name: 'Enviar agora' });
+    if (await enviarAgora.isVisible().catch(() => false)) {
+      await enviarAgora.click();
+    }
+    await respostaSincronizacao;
+
+    await page.goto('/campo/entrevistas');
+    const campoBusca = page.getByLabel('Nome do entrevistado');
+    await campoBusca.fill(nome);
+
+    // Espera a resposta da busca, e não só o texto na tela: clicar durante a
+    // troca de `dados` (o React ainda desmontando a linha antiga e montando a
+    // nova) fez este teste ficar intermitente — o clique "funcionava" sem
+    // erro, mas em cima de um nó a caminho de ser substituído.
+    const respostaListagem = page.waitForResponse(
+      (resposta) => resposta.url().includes('/campo/entrevistas?') && resposta.ok(),
+    );
+    await page.getByRole('button', { name: 'Buscar' }).click();
+    await respostaListagem;
+
+    const linha = page.getByText(nome, { exact: true });
+    await expect(linha).toBeVisible({ timeout: 20_000 });
+    await linha.click();
+
+    await expect(page).toHaveURL(/\/campo\/entrevistas\/[^/]+$/);
+    await expect(page.getByRole('heading', { name: nome })).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('tab', { name: 'Histórico' }).click();
+    await expect(page).toHaveURL(/aba=historico/);
+    await expect(page.getByText('Versão 1')).toBeVisible();
+    await expect(page.getByText('Registro original.')).toBeVisible();
+  });
+});
+
 test.describe('navegação', () => {
   // No celular a sidebar é gaveta e começa FECHADA — de propósito, para não
   // comer a tela do entrevistador. Rodar isto no perfil `campo` testaria o

@@ -80,6 +80,11 @@ export class SincronizacaoOfflineService {
     entrada: EntradaEntrevista,
   ): Promise<ResultadoItemSincronizacao> {
     // --- Idempotência --------------------------------------------------------
+    // EXCEÇÃO DELIBERADA: continua em `public.entrevistas`, não em
+    // `entrevistas_vigentes`. `id_local_offline` é a chave de idempotência do
+    // ENVIO, e ela pode estar numa versão já superada por uma retificação — a
+    // busca precisa achar a linha original mesmo que ela não seja mais a
+    // vigente, senão o mesmo envio duplicaria a entrevista.
     if (entrada.idLocalOffline) {
       const { rows } = await conexao.query<{ id: string }>(
         'select id from public.entrevistas where id_campanha = $1 and id_local_offline = $2',
@@ -278,8 +283,11 @@ export class SincronizacaoOfflineService {
     );
     const endereco = enderecos[0];
 
+    // `entrevistas_vigentes`: uma retificação feita no escritório não pode
+    // inflar o volume de campo do entrevistador original — o dono da linha
+    // continua sendo ele, mesmo quando quem retificou foi outra pessoa.
     const { rows: recentes } = await conexao.query<{ data_hora: Date }>(
-      `select data_hora from public.entrevistas
+      `select data_hora from public.entrevistas_vigentes
         where id_usuario_entrevistador = $1
           and data_hora > $2::timestamptz - interval '1 hour'
           and data_hora <= $2::timestamptz

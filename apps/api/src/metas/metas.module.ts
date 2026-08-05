@@ -83,7 +83,7 @@ export class MetasService {
                 coalesce((
                   select count(distinct ent.id_entrevistado)
                     from public.intencoes_voto i
-                    join public.entrevistas ent on ent.id = i.id_entrevista
+                    join public.entrevistas_vigentes ent on ent.id = i.id_entrevista
                     join public.entrevistados e on e.id = ent.id_entrevistado
                    where i.id_candidato = m.id_candidato
                      and ent.status in ('CONCLUIDA', 'VALIDADA')

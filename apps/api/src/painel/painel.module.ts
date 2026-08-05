@@ -76,8 +76,11 @@ export class PainelService {
         dataReferencia: 'ent.data_hora',
       });
 
+      // `entrevistas_vigentes`, e não `entrevistas`: uma entrevista retificada
+      // é DUAS linhas na tabela base (migration 0030). Contar direto na base
+      // dobraria o número aqui — o primeiro lugar que o coordenador olha.
       const { rows: entrevistas } = await conexao.query<{ total: string }>(
-        `select count(*) as total from public.entrevistas ent
+        `select count(*) as total from public.entrevistas_vigentes ent
           where ent.status in ('CONCLUIDA', 'VALIDADA') and ${recorteEntrevistas.predicado}`,
         recorteEntrevistas.parametros,
       );
@@ -87,7 +90,7 @@ export class PainelService {
       const { rows: porDia } = await conexao.query<{ dia: string; total: string }>(
         `select to_char(date_trunc('day', ent.data_hora), 'YYYY-MM-DD') as dia,
                 count(*) as total
-           from public.entrevistas ent
+           from public.entrevistas_vigentes ent
           where ent.status in ('CONCLUIDA', 'VALIDADA')
             and ent.data_hora > now() - interval '60 days'
             and ${recorteEntrevistas.predicado}
