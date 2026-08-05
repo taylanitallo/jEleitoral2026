@@ -1,1 +1,4 @@
 .vercel
+e2e/.sessao/
+test-results/
+playwright-report/

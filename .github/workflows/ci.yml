@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20.18.0'
+  NODE_VERSION: '22.11.0'
   PNPM_VERSION: '9.12.0'
 
 jobs:
@@ -98,6 +98,47 @@ jobs:
         run: pnpm --filter @jeleitoral/api test:rls
       - name: Isolamento cruzado entre organizações e campanhas
         run: pnpm --filter @jeleitoral/api test:isolamento
+
+  e2e:
+    name: Fluxo de campo de ponta a ponta
+    runs-on: ubuntu-latest
+    needs: [qualidade]
+    # Contra HOMOLOGAÇÃO, com login real. O E2E escreve dados (cria domicílio e
+    # entrevista) — nunca deve apontar para produção.
+    environment: homologacao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Sem credenciais o Playwright ignora as specs e roda vazio, por
+      # `testIgnore` no config — melhor que oito falhas idênticas escondendo as
+      # de verdade.
+      - name: Verificar credenciais
+        env:
+          EMAIL_E2E: ${{ secrets.EMAIL_E2E }}
+        run: |
+          if [ -z "$EMAIL_E2E" ]; then
+            echo "::warning::EMAIL_E2E não configurado. O E2E rodou vazio."
+          fi
+      - run: pnpm --filter @jeleitoral/web e2e:instalar
+      - name: E2E
+        env:
+          EMAIL_E2E: ${{ secrets.EMAIL_E2E }}
+          SENHA_E2E: ${{ secrets.SENHA_E2E }}
+          NEXT_PUBLIC_URL_API: ${{ secrets.URL_API_HOMOLOGACAO }}
+        run: pnpm --filter @jeleitoral/web e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: relatorio-e2e
+          path: apps/web/playwright-report/
+          retention-days: 7
 
   migrar-producao:
     name: Aplicar migrations em produção
