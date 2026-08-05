@@ -7,6 +7,7 @@ import {
   Home,
   Image,
   LayoutDashboard,
+  ListChecks,
   Map,
   Megaphone,
   Sparkles,
@@ -78,6 +79,11 @@ export const GRUPOS: GrupoModulos[] = [
         rotulo: 'Diagnóstico',
         permissao: 'diagnostico.ler',
       },
+      {
+        href: '/planejamento/acoes',
+        rotulo: 'Ações',
+        permissao: 'planejamento.ler',
+      },
     ],
   },
   {
@@ -134,6 +140,7 @@ export const ICONE_POR_ROTA: Record<string, LucideIcon> = {
   '/planejamento/areas': Compass,
   '/planejamento/narrativa': Compass,
   '/planejamento/diagnostico': ClipboardList,
+  '/planejamento/acoes': ListChecks,
   '/agenda': CalendarDays,
   '/mobilizacao/ativistas': Megaphone,
   '/mobilizacao/comites': Home,

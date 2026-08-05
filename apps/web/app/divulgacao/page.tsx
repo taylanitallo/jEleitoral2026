@@ -151,6 +151,14 @@ export default function PaginaDivulgacao(): JSX.Element {
   const [gerando, definirGerando] = useState(false);
   const [veioDaIa, definirVeioDaIa] = useState(false);
 
+  const [registrandoMetrica, definirRegistrandoMetrica] = useState<string | null>(null);
+  const [alcance, definirAlcance] = useState('');
+  const [curtidas, definirCurtidas] = useState('');
+  const [comentarios, definirComentarios] = useState('');
+  const [compartilhamentos, definirCompartilhamentos] = useState('');
+  const [salvandoMetrica, definirSalvandoMetrica] = useState(false);
+  const [erroMetrica, definirErroMetrica] = useState<string | null>(null);
+
   async function gerarLegendas(): Promise<void> {
     if (!idEixo) {
       definirErroFormulario('Escolha o eixo narrativo antes de pedir legendas.');
@@ -205,6 +213,36 @@ export default function PaginaDivulgacao(): JSX.Element {
   async function mudarStatus(id: string, status: StatusPublicacao): Promise<void> {
     await api.atualizar(`/divulgacao/publicacoes/${id}`, { status });
     recarregar();
+  }
+
+  function abrirRegistroMetrica(id: string): void {
+    definirRegistrandoMetrica(id);
+    definirAlcance('');
+    definirCurtidas('');
+    definirComentarios('');
+    definirCompartilhamentos('');
+    definirErroMetrica(null);
+  }
+
+  async function registrarMetrica(id: string): Promise<void> {
+    definirSalvandoMetrica(true);
+    definirErroMetrica(null);
+    try {
+      await api.enviar(`/divulgacao/publicacoes/${id}/metricas`, {
+        alcance: alcance || undefined,
+        curtidas: curtidas || undefined,
+        comentarios: comentarios || undefined,
+        compartilhamentos: compartilhamentos || undefined,
+      });
+      definirRegistrandoMetrica(null);
+      recarregar();
+    } catch (falha) {
+      definirErroMetrica(
+        falha instanceof ErroDaApi ? falha.message : 'Não foi possível registrar a aferição.',
+      );
+    } finally {
+      definirSalvandoMetrica(false);
+    }
   }
 
   if (carregandoSessao) return <EstadoCarregando />;
@@ -472,7 +510,84 @@ export default function PaginaDivulgacao(): JSX.Element {
                   Ver no ar
                 </a>
               ) : null}
+              {publicacao.status === 'PUBLICADA' && registrandoMetrica !== publicacao.id ? (
+                <Botao
+                  variante="sutil"
+                  tamanho="pequeno"
+                  onClick={() => abrirRegistroMetrica(publicacao.id)}
+                >
+                  Registrar aferição
+                </Botao>
+              ) : null}
             </div>
+
+            {registrandoMetrica === publicacao.id ? (
+              <div className="grid gap-3 rounded-[var(--raio)] border border-dashed border-[hsl(var(--acento))] bg-[hsl(var(--fundo-sutil))] p-3 sm:grid-cols-4">
+                <Campo id={`alcance-${publicacao.id}`} rotulo="Alcance">
+                  <input
+                    id={`alcance-${publicacao.id}`}
+                    type="number"
+                    min={0}
+                    className={classeControle}
+                    value={alcance}
+                    onChange={(e) => definirAlcance(e.target.value)}
+                  />
+                </Campo>
+                <Campo id={`curtidas-${publicacao.id}`} rotulo="Curtidas">
+                  <input
+                    id={`curtidas-${publicacao.id}`}
+                    type="number"
+                    min={0}
+                    className={classeControle}
+                    value={curtidas}
+                    onChange={(e) => definirCurtidas(e.target.value)}
+                  />
+                </Campo>
+                <Campo id={`comentarios-${publicacao.id}`} rotulo="Comentários">
+                  <input
+                    id={`comentarios-${publicacao.id}`}
+                    type="number"
+                    min={0}
+                    className={classeControle}
+                    value={comentarios}
+                    onChange={(e) => definirComentarios(e.target.value)}
+                  />
+                </Campo>
+                <Campo id={`compartilhamentos-${publicacao.id}`} rotulo="Compartilhamentos">
+                  <input
+                    id={`compartilhamentos-${publicacao.id}`}
+                    type="number"
+                    min={0}
+                    className={classeControle}
+                    value={compartilhamentos}
+                    onChange={(e) => definirCompartilhamentos(e.target.value)}
+                  />
+                </Campo>
+
+                {erroMetrica ? (
+                  <p role="alert" className="text-sm text-[hsl(var(--perigo))] sm:col-span-4">
+                    {erroMetrica}
+                  </p>
+                ) : null}
+
+                <div className="flex gap-2 sm:col-span-4">
+                  <Botao
+                    tamanho="pequeno"
+                    carregando={salvandoMetrica}
+                    onClick={() => void registrarMetrica(publicacao.id)}
+                  >
+                    Salvar aferição
+                  </Botao>
+                  <Botao
+                    variante="sutil"
+                    tamanho="pequeno"
+                    onClick={() => definirRegistrandoMetrica(null)}
+                  >
+                    Cancelar
+                  </Botao>
+                </div>
+              </div>
+            ) : null}
           </article>
         ))
       )}

@@ -47,6 +47,14 @@ export const PRECOS_POR_MODELO: Record<string, PrecoModelo> = {
   'claude-sonnet-4-6': { entrada: 3, saida: 15, cacheLeitura: 0.3, cacheEscrita: 3.75 },
   'claude-haiku-4-5': { entrada: 1, saida: 5, cacheLeitura: 0.1, cacheEscrita: 1.25 },
   'claude-fable-5': { entrada: 10, saida: 50, cacheLeitura: 1, cacheEscrita: 12.5 },
+
+  // --- Gemini ------------------------------------------------------------
+  // Descomente e preencha com os valores oficiais em
+  // https://ai.google.dev/gemini-api/docs/pricing antes de ativar o provedor.
+  // `MODELO_PADRAO.gemini` (fabricaProvedor.ts) usa 'gemini-2.5-pro'.
+  //
+  // 'gemini-2.5-pro': { entrada: 0, saida: 0, cacheLeitura: 0, cacheEscrita: 0 },
+  // 'gemini-2.5-flash': { entrada: 0, saida: 0, cacheLeitura: 0, cacheEscrita: 0 },
 };
 
 export interface CustoCalculado {
