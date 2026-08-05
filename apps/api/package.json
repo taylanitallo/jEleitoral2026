@@ -17,7 +17,8 @@
     "ibge:sincronizar": "tsx scripts/sincronizarIbge.ts",
     "tse:sincronizar": "tsx scripts/sincronizarTse.ts",
     "usuario:senha": "node scripts/redefinirSenha.mjs",
-    "provar:revogacao": "tsx scripts/provarRevogacao.ts"
+    "provar:revogacao": "tsx scripts/provarRevogacao.ts",
+    "banco:diagnosticar": "tsx scripts/diagnosticarBanco.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

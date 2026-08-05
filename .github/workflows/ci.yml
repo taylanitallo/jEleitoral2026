@@ -178,6 +178,17 @@ jobs:
       # aqui bloquearia todo push para main num repositório que ainda não
       # terminou de configurar o deploy, e o efeito prático seria alguém
       # desativar o job inteiro. Avisar mantém o caminho visível.
+      # Diz o que o banco REALMENTE tem, antes de tentar mudá-lo. Quando dá tudo
+      # certo é uma tabela no log; quando o esquema está à frente do registro, é
+      # a diferença entre uma tentativa e oito.
+      - name: Diagnosticar o banco
+        env:
+          BANCO_URL: ${{ secrets.BANCO_URL_PRODUCAO }}
+        run: |
+          if [ -n "$BANCO_URL" ]; then
+            pnpm --filter @jeleitoral/api banco:diagnosticar
+          fi
+
       - name: Aplicar migrations
         env:
           BANCO_URL: ${{ secrets.BANCO_URL_PRODUCAO }}
