@@ -13,7 +13,9 @@ import {
 } from '@jeleitoral/tipos';
 import { Campo, classeControle } from '@/componentes/cadastro/Campo';
 import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
-import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
+import { Barras3DIntencao } from '@/componentes/graficos3d/Barras3DIntencao';
+import type { LinhaIntencao } from '@/componentes/graficos3d/CenaBarrasIntencao';
+import { deParametrosUrl, descreverFiltro, paraParametrosUrl } from '@/lib/filtroGlobal';
 import { useListagem } from '@/lib/useListagem';
 import { useOpcoesFiltro, type OpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useSessao } from '@/lib/useSessao';
@@ -81,6 +83,12 @@ function ConteudoRelatorios(): JSX.Element {
   const { dados: catalogo, carregando: carregandoCatalogo } =
     useListagem<RelatorioCatalogo[]>('/relatorios/catalogo');
 
+  const parametrosIntencao = paraParametrosUrl(filtro);
+  parametrosIntencao.set('relatorio', 'intencao_por_candidato');
+  const { dados: dadosIntencao } = useListagem<{ colunas: unknown; linhas: LinhaIntencao[] }>(
+    idCampanha ? `/relatorios/dados?${parametrosIntencao.toString()}` : null,
+  );
+
   async function exportar(relatorio: string): Promise<void> {
     if (!idCampanha) return;
     definirGerando(relatorio);
@@ -143,6 +151,17 @@ function ConteudoRelatorios(): JSX.Element {
       <TarjaUsoInterno natureza={natureza} />
 
       <BarraFiltros idCampanha={idCampanha} opcoes={opcoes} />
+
+      <section className="grafico evitar-quebra rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-4">
+        <h2 className="text-sm font-medium text-[hsl(var(--texto))]">
+          Intenção de voto por candidato
+        </h2>
+        <p className="mb-3 text-xs text-[hsl(var(--texto-secundario))]">
+          Reage ao filtro acima. Cargo no eixo, candidato empilhado ao lado, altura pela contagem de
+          intenções — não é o número final, é o retrato da coleta até agora.
+        </p>
+        <Barras3DIntencao dados={dadosIntencao?.linhas ?? []} />
+      </section>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id="formato" rotulo="Formato">

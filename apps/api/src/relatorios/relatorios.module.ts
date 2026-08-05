@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Header, Injectable, Module, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  Injectable,
+  Module,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import {
@@ -205,6 +216,14 @@ const EntradaExportacao = z.object({
   filtrosPorExtenso: z.array(z.object({ rotulo: z.string(), valor: z.string() })).default([]),
 });
 
+const ConsultaDados = FiltroGlobal.extend({
+  relatorio: z.enum(Object.keys(RELATORIOS) as [NomeRelatorio, ...NomeRelatorio[]]),
+});
+
+/** Teto do preview ao vivo — bem abaixo de `LIMITE_EXPORTACAO_SINCRONA`: é
+ * para desenhar um gráfico na tela, não para uma planilha inteira. */
+const LIMITE_DADOS_AO_VIVO = 300;
+
 @Injectable()
 export class RelatoriosService {
   constructor(
@@ -319,6 +338,28 @@ export class RelatoriosService {
       descricao: RELATORIOS[chave].descricao,
     }));
   }
+
+  /**
+   * Mesma consulta do export, em JSON, para desenhar um gráfico na tela — os
+   * 3D do relatório (e o par 2D deles) vivem disto, não de um arquivo baixado.
+   * Não audita: não é uma exportação, é a tela recalculando com o filtro.
+   */
+  async dados(
+    claims: ClaimsUsuario,
+    entrada: z.infer<typeof ConsultaDados>,
+  ): Promise<{ colunas: ColunaRelatorio[]; linhas: Array<Record<string, unknown>> }> {
+    const { relatorio, ...filtro } = entrada;
+    const definicao = RELATORIOS[relatorio];
+
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const recorte = construirRecorte(filtro, definicao.colunasRecorte);
+      const { rows } = await conexao.query(
+        `select * from (${definicao.sql(recorte.predicado)}) consulta limit ${LIMITE_DADOS_AO_VIVO}`,
+        recorte.parametros,
+      );
+      return { colunas: definicao.colunas, linhas: rows };
+    });
+  }
 }
 
 @Controller('relatorios')
@@ -329,6 +370,15 @@ class RelatoriosController {
   @ExigePermissao('relatorios.exportar')
   catalogo(): Array<{ chave: NomeRelatorio; titulo: string; descricao: string }> {
     return this.relatorios.catalogo();
+  }
+
+  @Get('dados')
+  @ExigePermissao('relatorios.exportar')
+  async dados(
+    @Claims() claims: ClaimsUsuario,
+    @Query() consulta: unknown,
+  ): Promise<{ colunas: ColunaRelatorio[]; linhas: Array<Record<string, unknown>> }> {
+    return this.relatorios.dados(claims, ConsultaDados.parse(consulta));
   }
 
   @Post('exportar')

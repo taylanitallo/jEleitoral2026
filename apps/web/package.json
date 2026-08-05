@@ -19,6 +19,8 @@
     "@jeleitoral/tipos": "workspace:*",
     "@jeleitoral/ui": "workspace:*",
     "@jeleitoral/utilitarios": "workspace:*",
+    "@react-three/drei": "^9.114.3",
+    "@react-three/fiber": "^8.17.10",
     "@supabase/supabase-js": "^2.45.4",
     "@tanstack/react-table": "^8.20.5",
     "lucide-react": "^0.451.0",
@@ -27,6 +29,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "recharts": "^2.13.0",
+    "three": "^0.169.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -34,6 +37,7 @@
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.169.0",
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.1.0",
     "fake-indexeddb": "^6.0.0",

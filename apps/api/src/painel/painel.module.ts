@@ -13,6 +13,12 @@ export interface ResumoPainel {
   coberturaAmostral: number;
   porClassificacao: Array<{ classificacao: ClassificacaoEleitor; total: number }>;
   entrevistasPorDia: Array<{ dia: string; total: number }>;
+  porBairro: Array<{
+    idBairro: string;
+    nome: string;
+    mapeados: number;
+    classificacaoDominante: ClassificacaoEleitor | null;
+  }>;
 }
 
 /**
@@ -100,6 +106,35 @@ export class PainelService {
 
       const eleitoradoDoRecorte = await this.obterEleitorado(conexao, filtro);
 
+      // Grade do mapa 3D do painel — sem malha geográfica (decisão do plano),
+      // então só precisa de nome, contagem e a classificação que domina o
+      // bairro. `mode()` é o agregado de conjunto ordenado do Postgres para
+      // "valor mais frequente"; 40 bairros é o bastante para uma grade legível
+      // sem virar uma parede de blocos minúsculos.
+      const recorteBairros = construirRecorte(filtro, {
+        idCampanha: 'b.id_campanha',
+        idMunicipio: 'b.id_municipio',
+      });
+      const { rows: porBairro } = await conexao.query<{
+        id: string;
+        nome: string;
+        mapeados: string;
+        classificacao_dominante: ClassificacaoEleitor | null;
+      }>(
+        `select b.id, b.nome, count(distinct e.id) as mapeados,
+                mode() within group (order by e.classificacao) as classificacao_dominante
+           from public.bairros b
+           left join public.domicilios d on d.id_bairro = b.id
+           left join public.entrevistados e
+             on e.id_domicilio = d.id and e.anonimizado_em is null
+          where ${recorteBairros.predicado}
+          group by b.id, b.nome
+         having count(distinct e.id) > 0
+          order by mapeados desc
+          limit 40`,
+        recorteBairros.parametros,
+      );
+
       return {
         eleitoresMapeados,
         domiciliosVisitados: Number(domicilios[0]?.total ?? 0),
@@ -112,6 +147,12 @@ export class PainelService {
           total: Number(linha.total),
         })),
         entrevistasPorDia: porDia.map((linha) => ({ dia: linha.dia, total: Number(linha.total) })),
+        porBairro: porBairro.map((linha) => ({
+          idBairro: linha.id,
+          nome: linha.nome,
+          mapeados: Number(linha.mapeados),
+          classificacaoDominante: linha.classificacao_dominante,
+        })),
       };
     });
   }

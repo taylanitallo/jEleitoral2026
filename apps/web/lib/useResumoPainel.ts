@@ -13,6 +13,12 @@ export interface ResumoPainel {
   coberturaAmostral: number;
   porClassificacao: Array<{ classificacao: ClassificacaoEleitor; total: number }>;
   entrevistasPorDia: Array<{ dia: string; total: number }>;
+  porBairro: Array<{
+    idBairro: string;
+    nome: string;
+    mapeados: number;
+    classificacaoDominante: ClassificacaoEleitor | null;
+  }>;
 }
 
 /**

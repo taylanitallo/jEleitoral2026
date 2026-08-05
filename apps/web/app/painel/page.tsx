@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useMemo } from 'react';
 import {
   BarraAcoes,
@@ -16,7 +16,13 @@ import type { ClassificacaoEleitor } from '@jeleitoral/tipos';
 import { BarraFiltros } from '@/componentes/dashboard/BarraFiltros';
 import { CartaoIndicador } from '@/componentes/dashboard/CartaoIndicador';
 import { GraficoTendencia } from '@/componentes/dashboard/GraficoTendencia';
-import { deParametrosUrl, descreverFiltro } from '@/lib/filtroGlobal';
+import { Mapa3DBairros } from '@/componentes/graficos3d/Mapa3DBairros';
+import {
+  deParametrosUrl,
+  descreverFiltro,
+  paraParametrosUrl,
+  selecionarNivel,
+} from '@/lib/filtroGlobal';
 import { useOpcoesFiltro } from '@/lib/useOpcoesFiltro';
 import { useResumoPainel } from '@/lib/useResumoPainel';
 import { useSessao } from '@/lib/useSessao';
@@ -32,6 +38,7 @@ const ORDEM_CLASSIFICACAO: ClassificacaoEleitor[] = [
 
 function ConteudoPainel(): JSX.Element {
   const parametros = useSearchParams();
+  const roteador = useRouter();
   const { sessao, idCampanha, carregando: carregandoSessao } = useSessao();
 
   const filtro = useMemo(
@@ -44,6 +51,15 @@ function ConteudoPainel(): JSX.Element {
 
   const { resumo, carregando, erro, recarregar } = useResumoPainel(filtro);
   const { opcoes, carregando: carregandoOpcoes } = useOpcoesFiltro(idCampanha, filtro);
+
+  function selecionarBairro(idBairro: string): void {
+    const novo = selecionarNivel(
+      filtro,
+      'idBairro',
+      idBairro === filtro.idBairro ? undefined : idBairro,
+    );
+    roteador.replace(`?${paraParametrosUrl(novo).toString()}`, { scroll: false });
+  }
 
   if (carregandoSessao) {
     return <EstadoCarregando mensagem="Carregando sua campanha…" linhas={4} />;
@@ -179,6 +195,19 @@ function ConteudoPainel(): JSX.Element {
             <div className="mt-3">
               <GraficoTendencia dados={resumo.entrevistasPorDia} rotulo="entrevistas" />
             </div>
+          </section>
+
+          <section className="grafico evitar-quebra rounded-[var(--raio)] border border-[hsl(var(--borda))] bg-[hsl(var(--superficie))] p-4">
+            <h2 className="text-sm font-medium text-[hsl(var(--texto))]">Mapa por bairro</h2>
+            <p className="mb-3 text-xs text-[hsl(var(--texto-secundario))]">
+              Sem malha geográfica ainda — blocos em grade, altura por eleitores mapeados. Clique
+              num bairro para recortar o painel inteiro por ele.
+            </p>
+            <Mapa3DBairros
+              dados={resumo.porBairro}
+              idBairroSelecionado={filtro.idBairro ?? null}
+              aoSelecionar={selecionarBairro}
+            />
           </section>
         </>
       )}
