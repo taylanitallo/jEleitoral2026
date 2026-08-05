@@ -30,10 +30,12 @@ setup('autenticar', async ({ page }) => {
    * CI que fica vermelho por configuração ausente é um CI que se aprende a
    * ignorar.
    */
-  setup.skip(
-    !email || !senha,
-    'Defina EMAIL_E2E e SENHA_E2E (conta de HOMOLOGAÇÃO — o E2E escreve dados).',
-  );
+  if (!email || !senha) {
+    // `setup.skip(true, ...)` interrompe o teste lançando; o `return` existe
+    // para o compilador, que não sabe disso e não estreitaria os tipos abaixo.
+    setup.skip(true, 'Defina EMAIL_E2E e SENHA_E2E (conta de HOMOLOGAÇÃO — o E2E escreve dados).');
+    return;
+  }
 
   await page.goto('/entrar');
   await page.getByLabel(/e-?mail/i).fill(email);
