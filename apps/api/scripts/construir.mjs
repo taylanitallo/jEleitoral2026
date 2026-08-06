@@ -2,6 +2,7 @@ import { build, context } from 'esbuild';
 import { spawn } from 'node:child_process';
 import esbuildPluginTsc from 'esbuild-plugin-tsc';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Build da API para deploy.
@@ -64,9 +65,37 @@ if (!observar) {
    */
   let processo = null;
 
+  // `main.ts` carrega config com `import 'dotenv/config'`, que por padrão lê
+  // `.env` do cwd do processo — aqui, `apps/api/`, onde não existe `.env`
+  // nenhum (o projeto documenta um único `.env` na raiz). Sem isto, `pnpm dev`
+  // sobe a API sem nenhuma variável de ambiente, e `carregarConfiguracao()`
+  // derruba o processo — o sintoma na tela é só "não consigo entrar", sem
+  // nada nos logs que aponte para a causa real.
+  const CAMINHO_ENV_RAIZ = fileURLToPath(new URL('../../../.env', import.meta.url));
+
+  const subir = () => {
+    processo = spawn(process.execPath, ['dist/main.js'], {
+      stdio: 'inherit',
+      env: { ...process.env, DOTENV_CONFIG_PATH: CAMINHO_ENV_RAIZ },
+    });
+  };
+
+  /*
+   * `kill()` pede o encerramento e devolve na hora — não espera o processo
+   * soltar a porta. `spawn()` do próximo, logo em seguida, corria com o
+   * `EADDRINUSE` do antigo ainda de pé: a API "reiniciava", a porta ficava
+   * presa no processo velho, e a alteração recém-salva nunca chegava a
+   * responder nada — o próximo `curl` batia no código de antes da mudança,
+   * sem aviso de que a atual nem chegou a subir.
+   */
   const reiniciar = () => {
-    if (processo) processo.kill();
-    processo = spawn(process.execPath, ['dist/main.js'], { stdio: 'inherit' });
+    if (!processo) {
+      subir();
+      return;
+    }
+    const anterior = processo;
+    anterior.once('exit', subir);
+    anterior.kill();
   };
 
   const ctx = await context({

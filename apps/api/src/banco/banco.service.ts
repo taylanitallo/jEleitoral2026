@@ -113,6 +113,12 @@ export class BancoService implements OnModuleDestroy {
       equipes: claims.equipes,
       territorios: claims.territorios,
       permissoes: claims.permissoes,
+      // Sem isto, `autenticacao.eh_provedor()` — que lê esta claim de dentro
+      // do banco, não do JWT — nunca via true para um token do backoffice, e
+      // toda política `_provedor` (organizacoes, planos, usuarios, logs_
+      // auditoria) filtrava tudo em silêncio: a rota respondia 200 com lista
+      // vazia, não 403, então o defeito não aparecia como erro nenhum.
+      perfil_provedor: claims.perfilProvedor,
     };
   }
 

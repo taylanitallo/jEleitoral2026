@@ -122,7 +122,12 @@ export class AutenticacaoGuard implements CanActivate {
       contexto.getClass(),
     ]);
 
-    if (!dispensaMfa && PERFIS_COM_MFA_OBRIGATORIO.has(claims.perfil) && !claims.mfaVerificado) {
+    if (
+      !dispensaMfa &&
+      claims.perfil !== undefined &&
+      PERFIS_COM_MFA_OBRIGATORIO.has(claims.perfil) &&
+      !claims.mfaVerificado
+    ) {
       throw new ForbiddenException(
         'Este perfil exige verificação em duas etapas. Conclua a verificação para continuar.',
       );
@@ -174,9 +179,10 @@ export class AutenticacaoGuard implements CanActivate {
       const claims = ClaimsUsuario.parse({
         sub: payload.sub,
         email: payload['email'],
-        idOrganizacao: payload['id_organizacao'],
-        idPerfil: payload['id_perfil'],
-        perfil: payload['perfil'],
+        idOrganizacao: payload['id_organizacao'] ?? undefined,
+        idPerfil: payload['id_perfil'] ?? undefined,
+        perfil: payload['perfil'] ?? undefined,
+        perfilProvedor: payload['perfil_provedor'] ?? undefined,
         campanhas: payload['campanhas'] ?? [],
         equipes: payload['equipes'] ?? [],
         territorios: payload['territorios'] ?? [],

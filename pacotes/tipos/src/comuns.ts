@@ -73,9 +73,21 @@ export type ErroApi = z.infer<typeof ErroApi>;
 export const ClaimsUsuario = z.object({
   sub: Uuid,
   email: z.string().email(),
-  idOrganizacao: Uuid,
-  idPerfil: Uuid,
-  perfil: z.string(),
+  /**
+   * Ausentes para um token do backoffice da Jeos (`perfilProvedor` presente
+   * no lugar) — esse usuário não pertence a organização nenhuma, de propósito
+   * (seção 1.1.1). `autenticacao.controller.ts` já computa
+   * `ehProvedor: !claims.idOrganizacao` a partir dessa ausência; antes desta
+   * revisão o schema exigia os três campos, e `verificarToken()` derrubava
+   * TODO token de provedor com "Sessão inválida" antes de chegar a qualquer
+   * controller — `/provedor/*` nunca funcionou para uma conta que não também
+   * fosse de alguma organização.
+   */
+  idOrganizacao: Uuid.optional(),
+  idPerfil: Uuid.optional(),
+  perfil: z.string().optional(),
+  /** Presente só num token do backoffice da Jeos — ver `idOrganizacao`. */
+  perfilProvedor: z.enum(['SUPORTE_PROVEDOR', 'ADMINISTRADOR_PROVEDOR']).optional(),
   campanhas: z.array(Uuid).default([]),
   equipes: z.array(Uuid).default([]),
   territorios: z.array(Uuid).default([]),
@@ -92,15 +104,6 @@ export const ClaimsUsuario = z.object({
   mfaVerificado: z.boolean().default(false),
 });
 export type ClaimsUsuario = z.infer<typeof ClaimsUsuario>;
-
-/** Claims do backoffice da Jeos — não possuem `idOrganizacao`. */
-export const ClaimsProvedor = z.object({
-  sub: Uuid,
-  email: z.string().email(),
-  perfilProvedor: z.enum(['SUPORTE_PROVEDOR', 'ADMINISTRADOR_PROVEDOR']),
-  mfaVerificado: z.boolean().default(false),
-});
-export type ClaimsProvedor = z.infer<typeof ClaimsProvedor>;
 
 // --- Filtro global do dashboard --------------------------------------------
 

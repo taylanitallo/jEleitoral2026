@@ -1,25 +1,52 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
   Get,
   Injectable,
   Module,
+  Param,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
+import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-import { ClaimsUsuario, Uuid } from '@jeleitoral/tipos';
+import { ClaimsUsuario, StatusOrganizacao, Uuid } from '@jeleitoral/tipos';
 import { ExigePermissao } from '../autenticacao/autenticacao.guard.js';
 import { Claims } from '../autenticacao/claimsUsuario.decorator.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { BancoService } from '../banco/banco.service.js';
+import { carregarConfiguracao } from '../comum/configuracao.js';
+import { gerarSenhaInicial } from '../comum/gerarSenhaInicial.js';
 
 const EntradaAcessoSuporte = z.object({
   idUsuarioProvedor: Uuid,
   emailProvedor: z.string().email(),
   motivo: z.string().trim().min(20, 'Descreva o motivo com pelo menos 20 caracteres.'),
   horasDeAcesso: z.number().int().min(1).max(168).default(24),
+});
+
+const EntradaCriarOrganizacao = z.object({
+  nome: z.string().trim().min(2, 'Informe o nome da organização.').max(120),
+  razaoSocial: z.string().trim().max(160).optional(),
+  idPlano: Uuid,
+  corAcento: z
+    .string()
+    .regex(/^\d{1,3} \d{1,3}% \d{1,3}%$/, 'Cor inválida — use o formato "matiz saturação% luz%".')
+    .optional(),
+  administrador: z.object({
+    nome: z.string().trim().min(3, 'Informe o nome do administrador.').max(120),
+    email: z.string().trim().toLowerCase().email('Informe um e-mail válido.'),
+  }),
+});
+
+const EntradaStatusOrganizacao = z.object({ status: StatusOrganizacao });
+
+const EntradaPlanoOrganizacao = z.object({
+  idPlano: Uuid,
+  expiraEm: z.coerce.date().optional(),
 });
 
 /**
@@ -44,10 +71,18 @@ const EntradaAcessoSuporte = z.object({
  */
 @Injectable()
 export class ProvedorService {
+  private readonly configuracao = carregarConfiguracao();
+
   constructor(
     private readonly banco: BancoService,
     private readonly auditoria: AuditoriaService,
   ) {}
+
+  private clienteAdministrativo() {
+    return createClient(this.configuracao.SUPABASE_URL, this.configuracao.SUPABASE_CHAVE_SERVICO, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
 
   /** Painel comercial: organizações, planos, contratos e uso agregado. */
   async listarOrganizacoes(claims: ClaimsUsuario): Promise<unknown[]> {
@@ -68,6 +103,168 @@ export class ProvedorService {
           order by o.nome`,
       );
       return rows;
+    });
+  }
+
+  /** Catálogo de planos, para o formulário de nova organização e de troca de plano. */
+  async listarPlanos(claims: ClaimsUsuario): Promise<unknown[]> {
+    this.exigirProvedor(claims);
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows } = await conexao.query(
+        `select id, nome, limite_usuarios, limite_entrevistas_mes, valor_mensal
+           from public.planos where ativo order by valor_mensal`,
+      );
+      return rows;
+    });
+  }
+
+  /**
+   * Cria uma organização e seu primeiro administrador.
+   *
+   * Generaliza o que `scripts/semearOrganizacao.mjs` fazia à mão para a
+   * primeira organização do sistema: insere a organização, semeia os 7
+   * perfis-padrão (`semear_perfis_organizacao`) e cria o usuário ADMINISTRADOR
+   * já vinculado a eles. Não cria campanha nenhuma — isso é trabalho do
+   * próprio administrador recém-criado, na tela de Campanhas.
+   *
+   * A conta no Supabase Auth nasce ANTES da transação SQL, como em
+   * `UsuariosController.criar()`: se a parte SQL falhar depois, a conta órfã
+   * é desfeita no `catch` — a alternativa (SQL primeiro) deixaria uma
+   * organização sem ninguém capaz de entrar nela.
+   */
+  async criarOrganizacao(
+    claims: ClaimsUsuario,
+    entrada: z.infer<typeof EntradaCriarOrganizacao>,
+  ): Promise<{ idOrganizacao: string; senhaInicial: string }> {
+    this.exigirProvedor(claims);
+
+    const senhaInicial = gerarSenhaInicial();
+    const administrativo = this.clienteAdministrativo();
+
+    const { data, error } = await administrativo.auth.admin.createUser({
+      email: entrada.administrador.email,
+      password: senhaInicial,
+      email_confirm: true,
+    });
+    if (error || !data.user) {
+      throw new BadRequestException(
+        'Não foi possível criar o acesso do administrador. Verifique se este e-mail já está em uso.',
+      );
+    }
+
+    try {
+      return await this.banco.executarComoUsuario(claims, async (conexao) => {
+        const { rows: org } = await conexao.query<{ id: string }>(
+          `insert into public.organizacoes (nome, razao_social, id_plano, cor_acento)
+           values ($1, $2, $3, $4) returning id`,
+          [entrada.nome, entrada.razaoSocial ?? null, entrada.idPlano, entrada.corAcento ?? null],
+        );
+        const idOrganizacao = org[0]!.id;
+
+        await conexao.query('select public.semear_perfis_organizacao($1)', [idOrganizacao]);
+
+        const { rows: perfil } = await conexao.query<{ id: string }>(
+          `select id from public.perfis_acesso where id_organizacao = $1 and nome = 'ADMINISTRADOR'`,
+          [idOrganizacao],
+        );
+
+        await conexao.query(
+          `insert into public.usuarios (id, id_organizacao, nome, email, id_perfil, ativo)
+           values ($1, $2, $3, $4, $5, true)`,
+          [
+            data.user.id,
+            idOrganizacao,
+            entrada.administrador.nome,
+            entrada.administrador.email,
+            perfil[0]!.id,
+          ],
+        );
+
+        await this.auditoria.registrarNaTransacao(conexao, claims, {
+          acao: 'CRIAR',
+          entidade: 'organizacoes',
+          idEntidade: idOrganizacao,
+          idOrganizacaoAlvo: idOrganizacao,
+          dadosDepois: {
+            nome: entrada.nome,
+            idPlano: entrada.idPlano,
+            administrador: entrada.administrador.email,
+          },
+        });
+
+        return { idOrganizacao, senhaInicial };
+      });
+    } catch (erro) {
+      // Mesma lógica de `UsuariosController.criar()`: a conta de autenticação
+      // já existe, mas a organização não — desfazer evita um usuário capaz de
+      // entrar e não pertencer a lugar nenhum.
+      await administrativo.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+      throw erro;
+    }
+  }
+
+  async definirStatusOrganizacao(
+    claims: ClaimsUsuario,
+    idOrganizacao: string,
+    status: StatusOrganizacao,
+  ): Promise<{ status: StatusOrganizacao }> {
+    this.exigirProvedor(claims);
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows: antes } = await conexao.query<{ status: StatusOrganizacao }>(
+        'select status from public.organizacoes where id = $1',
+        [idOrganizacao],
+      );
+      if (!antes[0]) throw new BadRequestException('Organização não encontrada.');
+
+      const { rows } = await conexao.query<{ status: StatusOrganizacao }>(
+        'update public.organizacoes set status = $2, atualizado_em = now() where id = $1 returning status',
+        [idOrganizacao, status],
+      );
+
+      await this.auditoria.registrarNaTransacao(conexao, claims, {
+        acao: 'ALTERAR',
+        entidade: 'organizacoes',
+        idEntidade: idOrganizacao,
+        idOrganizacaoAlvo: idOrganizacao,
+        dadosAntes: antes[0],
+        dadosDepois: rows[0],
+      });
+
+      return rows[0]!;
+    });
+  }
+
+  async definirPlanoOrganizacao(
+    claims: ClaimsUsuario,
+    idOrganizacao: string,
+    entrada: z.infer<typeof EntradaPlanoOrganizacao>,
+  ): Promise<{ idPlano: string; expiraEm: Date | null }> {
+    this.exigirProvedor(claims);
+    return this.banco.executarComoUsuario(claims, async (conexao) => {
+      const { rows: antes } = await conexao.query(
+        'select id_plano, expira_em from public.organizacoes where id = $1',
+        [idOrganizacao],
+      );
+      if (!antes[0]) throw new BadRequestException('Organização não encontrada.');
+
+      const { rows } = await conexao.query<{ id_plano: string; expira_em: Date | null }>(
+        `update public.organizacoes
+            set id_plano = $2, expira_em = coalesce($3, expira_em), atualizado_em = now()
+          where id = $1
+        returning id_plano, expira_em`,
+        [idOrganizacao, entrada.idPlano, entrada.expiraEm ?? null],
+      );
+
+      await this.auditoria.registrarNaTransacao(conexao, claims, {
+        acao: 'ALTERAR',
+        entidade: 'organizacoes',
+        idEntidade: idOrganizacao,
+        idOrganizacaoAlvo: idOrganizacao,
+        dadosAntes: antes[0],
+        dadosDepois: rows[0],
+      });
+
+      return { idPlano: rows[0]!.id_plano, expiraEm: rows[0]!.expira_em };
     });
   }
 
@@ -192,9 +389,14 @@ export class ProvedorService {
     });
   }
 
-  private exigirProvedor(claims: ClaimsUsuario): void {
-    // O guard já barra, mas a checagem aqui evita que uma refatoração futura
-    // reaproveite o serviço num controller sem a proteção certa.
+  /**
+   * Não é `private`: a checagem precisa poder rodar de um controller que não
+   * passa pelo resto do serviço — como `auditoria()` abaixo, que consulta a
+   * view direto. O guard já barra por permissão, mas repetir a checagem aqui
+   * evita que uma refatoração futura reaproveite o serviço ou o controller
+   * sem a proteção certa.
+   */
+  exigirProvedor(claims: ClaimsUsuario): void {
     if (claims.idOrganizacao) {
       throw new ForbiddenException('Esta área é exclusiva do backoffice.');
     }
@@ -213,12 +415,49 @@ class ProvedorController {
     return this.provedor.listarOrganizacoes(claims);
   }
 
+  @Get('planos')
+  async planos(@Claims() claims: ClaimsUsuario): Promise<unknown[]> {
+    return this.provedor.listarPlanos(claims);
+  }
+
+  @Post('organizacoes')
+  async criarOrganizacao(
+    @Claims() claims: ClaimsUsuario,
+    @Body() corpo: unknown,
+  ): Promise<{ idOrganizacao: string; senhaInicial: string }> {
+    return this.provedor.criarOrganizacao(claims, EntradaCriarOrganizacao.parse(corpo));
+  }
+
+  @Patch('organizacoes/:id/status')
+  async status(
+    @Claims() claims: ClaimsUsuario,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+  ): Promise<{ status: string }> {
+    const entrada = EntradaStatusOrganizacao.parse(corpo);
+    return this.provedor.definirStatusOrganizacao(claims, Uuid.parse(id), entrada.status);
+  }
+
+  @Patch('organizacoes/:id/plano')
+  async plano(
+    @Claims() claims: ClaimsUsuario,
+    @Param('id') id: string,
+    @Body() corpo: unknown,
+  ): Promise<{ idPlano: string; expiraEm: Date | null }> {
+    return this.provedor.definirPlanoOrganizacao(
+      claims,
+      Uuid.parse(id),
+      EntradaPlanoOrganizacao.parse(corpo),
+    );
+  }
+
   /** Auditoria em nível de metadado: quem acessou o quê, sem o conteúdo. */
   @Get('auditoria')
   async auditoria(
     @Claims() claims: ClaimsUsuario,
     @Query('idOrganizacao') id?: string,
   ): Promise<unknown[]> {
+    this.provedor.exigirProvedor(claims);
     return this.banco.executarComoUsuario(claims, async (conexao) => {
       const { rows } = await conexao.query(
         `select * from provedor.auditoria_metadados

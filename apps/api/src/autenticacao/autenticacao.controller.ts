@@ -390,7 +390,11 @@ export class AutenticacaoController {
     return {
       idUsuario: claims.sub,
       email: claims.email,
-      perfil: claims.perfil,
+      // `perfil` é o de organização; `perfilProvedor`, o do backoffice da
+      // Jeos — nunca os dois no mesmo token. Um usuário do provedor puro
+      // não tem nenhum perfil de organização, e a tela precisa de algo para
+      // mostrar mesmo assim.
+      perfil: claims.perfil ?? claims.perfilProvedor ?? 'PROVEDOR',
       campanhas: claims.campanhas,
       campanhasDisponiveis,
       permissoes: claims.permissoes,

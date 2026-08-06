@@ -8,6 +8,13 @@ export interface RegistroAuditoria {
   entidade: string;
   idEntidade?: string | null;
   idCampanha?: string | null;
+  /**
+   * Só para ações do provedor sobre uma organização alvo: o token do
+   * provedor não tem `id_organizacao` (não é uma organização), então
+   * `claims.idOrganizacao` sozinho gravaria a linha sem dono. Ignorado para
+   * qualquer chamada que não seja do provedor.
+   */
+  idOrganizacaoAlvo?: string | null;
   dadosAntes?: unknown;
   dadosDepois?: unknown;
   /** Filtro por extenso — obrigatório em exportações. */
@@ -52,9 +59,15 @@ export class AuditoriaService {
           ip, user_agent, id_correlacao)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
-        claims.idOrganizacao,
+        registro.idOrganizacaoAlvo ?? claims.idOrganizacao,
         registro.idCampanha ?? null,
-        claims.sub,
+        // `logs_auditoria.id_usuario` referencia `public.usuarios`, onde uma
+        // conta do backoffice da Jeos nunca está (vive em `provedor.
+        // usuarios`, de propósito — não é uma organização). Gravar
+        // `claims.sub` de um token de provedor aqui violaria a FK; `null`
+        // é o valor correto, não uma perda de rastro — a ação já fica
+        // registrada em qual organização, quando e o quê.
+        claims.idOrganizacao ? claims.sub : null,
         registro.acao,
         registro.entidade,
         registro.idEntidade ?? null,

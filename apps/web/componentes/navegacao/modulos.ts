@@ -7,10 +7,12 @@ import {
   History,
   Home,
   Image,
+  KeyRound,
   LayoutDashboard,
   ListChecks,
   Map,
   Megaphone,
+  Settings,
   ShieldAlert,
   Sparkles,
   Target,
@@ -128,7 +130,6 @@ export const GRUPOS: GrupoModulos[] = [
       { href: '/cadastros/usuarios', rotulo: 'Equipe', permissao: 'usuarios.ler' },
       { href: '/cadastros/financeiro', rotulo: 'Financeiro', permissao: 'financeiro.ler' },
       { href: '/cadastros/artes', rotulo: 'Artes', permissao: 'artes.ler' },
-      { href: '/configuracoes/ia', rotulo: 'Uso de IA', permissao: 'ia.usar' },
     ],
   },
   {
@@ -136,6 +137,16 @@ export const GRUPOS: GrupoModulos[] = [
     rotulo: 'Relatórios',
     icone: FileBarChart,
     itens: [{ href: '/relatorios', rotulo: 'Exportações', permissao: 'relatorios.exportar' }],
+  },
+  {
+    id: 'configuracoes',
+    rotulo: 'Configurações',
+    icone: Settings,
+    itens: [
+      { href: '/configuracoes/gerais', rotulo: 'Gerais', permissao: 'organizacao.alterar' },
+      { href: '/configuracoes/perfis', rotulo: 'Perfis de acesso', permissao: 'perfis.gerenciar' },
+      { href: '/configuracoes/ia', rotulo: 'Uso de IA', permissao: 'ia.usar' },
+    ],
   },
 ];
 
@@ -161,8 +172,10 @@ export const ICONE_POR_ROTA: Record<string, LucideIcon> = {
   '/cadastros/usuarios': Users,
   '/cadastros/financeiro': Wallet,
   '/cadastros/artes': Image,
-  '/configuracoes/ia': Sparkles,
   '/relatorios': FileBarChart,
+  '/configuracoes/gerais': Building2,
+  '/configuracoes/perfis': KeyRound,
+  '/configuracoes/ia': Sparkles,
 };
 
 /**

@@ -16,6 +16,8 @@ import { CampoModule } from './campo/campo.module.js';
 import { CandidatosModule } from './candidatos/candidatos.module.js';
 import { MetasModule } from './metas/metas.module.js';
 import { MobilizacaoModule } from './mobilizacao/mobilizacao.module.js';
+import { OrganizacaoModule } from './organizacao/organizacao.module.js';
+import { PerfisModule } from './perfis/perfis.module.js';
 import { FiltroExcecoes } from './comum/filtroExcecoes.js';
 import { InterceptorCorrelacao } from './comum/interceptorCorrelacao.js';
 import { DiagnosticoModule } from './diagnostico/diagnostico.module.js';
@@ -58,6 +60,8 @@ import { SaudeController } from './saude/saude.controller.js';
     IaModule,
     ArtesModule,
     RelatoriosModule,
+    OrganizacaoModule,
+    PerfisModule,
   ],
   controllers: [SaudeController, CampanhasController, UsuariosController, AutenticacaoController],
   providers: [
